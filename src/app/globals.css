@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+.text-black{
+  color: #212121 !important;
+}
+
+.text-gray{
+  color : #424242 !important
+}
+
+.text-blue{
+  color: #0080FB !important;
+}
+
+.ant-input-lg{
+  padding:12px 16px !important;
+  border-radius: 5px !important;
+}
+.ant-input-affix-wrapper-lg{
+  padding:0 !important;
+}
+
+.ant-input-password-icon{
+  margin-right:10px !important;
+}
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.6); /* Transparent white */
+  backdrop-filter: blur(1px); /* Frosted glass effect */
+}
+
+@media only screen and (max-width: 600px) {
+  .disnone{
+    display:none !important;
+  }
+}
