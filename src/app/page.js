@@ -34,7 +34,7 @@ export default function Home() {
           </svg>
 
 
-          <div className="w-full absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 glass-effect">
+          <div className="w-full h-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 p-8 glass-effect">
             <h1 className="text-3xl font-semibold">Masuk</h1>
             <Form
               form={FormLogin}
@@ -59,18 +59,18 @@ export default function Home() {
               <button style={{ backgroundColor: '#98DCFE' }} className="py-3 w-full rounded font-semibold text-white mt-3"> Masuk</button>
             </Form>
 
-            <div className="mt-[186px]">
+            <div className="mt-32">
               <div className="text-center text-blue font-medium text-base">
                 Dapatkan Bantuan
               </div>
 
-              <div className="text-base mt-10 text-gray font-regular">
+              <div className="text-sm mt-10 text-gray font-regular">
                 Dengan melanjutkan, Anda menyetujui Syarat dan Ketentuan dan mengakui Pemberitahuan Privasi kami
               </div>
             </div>
           </div>
 
-          <div className="text-center text-base font-regular w-full"
+          <div className="text-center text-sm font-regular w-full"
             style={{
               position: 'absolute',
               bottom: '10px'
