@@ -1,9 +1,21 @@
 "use client"
 
 import { Col, Form, Image, Input, Row } from "antd";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [FormLogin] = Form.useForm()
+  const [isFilled, setIsFilled] = useState(false)
+
+  const handleChangeFields = () => {
+    const values = FormLogin.getFieldsValue()
+    if (values.username?.length > 0 && values.password?.length > 0) {
+      setIsFilled(true)
+    } else {
+      setIsFilled(false)
+    }
+  }
+
 
   return (
     <main>
@@ -39,6 +51,7 @@ export default function Home() {
             <Form
               form={FormLogin}
               layout="vertical"
+              onFieldsChange={handleChangeFields}
             >
               <div className="text-base font-medium text-gray mb-2 mt-12">NIK PI SMART <span className="text-red-600">*</span></div>
               <Form.Item
@@ -56,11 +69,17 @@ export default function Home() {
                 <Input.Password className="mt-2" placeholder="Masukan password" size="large"></Input.Password>
               </Form.Item>
 
-              <button style={{ backgroundColor: '#98DCFE' }} className="py-3 w-full rounded font-semibold text-white mt-3"> Masuk</button>
+              <button 
+                className={`py-3 w-full rounded font-semibold text-white mt-3 ${isFilled ? 'bg-blue' : 'bg-blue-200'}`}
+                disabled={!isFilled}
+              >
+                Masuk
+              </button>
+
             </Form>
 
-            <div className="mt-32">
-              <div className="text-center text-blue font-medium text-base">
+            <div className="mt-28">
+              <div className="text-center text-blue font-medium text-base cursor-pointer">
                 Dapatkan Bantuan
               </div>
 
@@ -81,8 +100,8 @@ export default function Home() {
         </Col>
         <Col lg={16} span={24} className="disnone h-screen">
           <img src="https://geospi.vercel.app/sawah.png" style={{
-            height:'100vh',
-            width:'100%'
+            height: '100vh',
+            width: '100%'
           }} />
         </Col>
 
