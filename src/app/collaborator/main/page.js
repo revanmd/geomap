@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X } from "lucide-react";
+import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
@@ -25,8 +26,20 @@ export default function Collaborator() {
         setEvent('survey')
     }
 
+
+
+
+    ////////////////////////////////////////////////////////////////
+    //// SURVEY
+
+    const [surveyCommodity, setSurveyCommodity] = useState("")
+    const clickedCommodity = (commodityType) => {
+        setSurveyCommodity(commodityType)
+    }
+
     const clickedCloseSurvey = () => {
         setEvent('view')
+        setSurveyCommodity("")
     }
 
     const nextSurveiStep = () => {
@@ -38,6 +51,16 @@ export default function Collaborator() {
             setSurveyStep(surveyStep - 1)
         }
     }
+
+
+    ////////////////////////////////////////////////////////////////
+    //// WEBCAM
+
+    ///////////////////////////////////////////////////////////////////
+    const videoConstraints = {
+        facingMode: "environment"
+    };
+
 
     return (
         <main>
@@ -90,7 +113,7 @@ export default function Collaborator() {
                             position: 'absolute',
                             top: 20,
                             left: 0,
-                            zIndex: 9999
+                            zIndex: 99993
                         }}
                     >
                         <div className="bg-white ml-5 p-3 rounded-full text-blue shadow-lg"
@@ -150,25 +173,53 @@ export default function Collaborator() {
                         </div>
 
                         <div className="py-1 text-center w-full flex justify-around px-5">
-                            <div style={{width:'70px'}} className="border border-gray-300 rounded text-center mx-2 py-3 my-3">
+                            <div style={{ width: '70px' }}
+                                className={`border rounded text-center mx-2 py-3 my-3 
+                                    ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
+                                    }`}
+                                onClick={() => {
+                                    clickedCommodity("padi")
+                                }}
+                            >
                                 <img src="/padi.png" className="icon-commodity ml-auto mr-auto"></img>
                                 <div className="font-semibold text-sm mt-1.5">
                                     Padi
                                 </div>
                             </div>
-                            <div style={{width:'70px'}} className="border border-gray-300 rounded text-center mx-2 py-3 my-3">
+                            <div style={{ width: '70px' }}
+                                className={`border rounded text-center mx-2 py-3 my-3 
+                                ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
+                                    }`}
+                                onClick={() => {
+                                    clickedCommodity("jagung")
+                                }}
+                            >
                                 <img src="/jagung.png" className="icon-commodity ml-auto mr-auto"></img>
                                 <div className="font-semibold text-sm mt-1.5">
                                     Jagung
                                 </div>
                             </div>
-                            <div style={{width:'70px'}} className="border border-gray-300 rounded text-center mx-2 py-3 my-3">
+                            <div style={{ width: '70px' }}
+                                className={`border rounded text-center mx-2 py-3 my-3 
+                                ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
+                                    }`}
+                                onClick={() => {
+                                    clickedCommodity("tebu")
+                                }}
+                            >
                                 <img src="/tebu.png" className="icon-commodity ml-auto mr-auto"></img>
                                 <div className="font-semibold text-sm mt-1.5">
                                     Tebu
                                 </div>
                             </div>
-                            <div style={{width:'70px'}} className="border border-gray-300 rounded text-center mx-2 py-3 my-3">
+                            <div style={{ width: '70px' }}
+                                className={`border rounded text-center mx-2 py-3 my-3 
+                                    ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
+                                    }`}
+                                onClick={() => {
+                                    clickedCommodity("other")
+                                }}
+                            >
                                 <img src="/other.png" className="icon-commodity ml-auto mr-auto"></img>
                                 <div className="font-semibold text-sm mt-1.5">
                                     Lainnya
@@ -176,12 +227,58 @@ export default function Collaborator() {
                             </div>
                         </div>
 
-                        <div className="mb-3 font-semibold text-white bg-blue text-center text-base p-3 mx-6 rounded">
+                        <div
+                            className={`mb-3 font-semibold text-white text-center text-base p-3 mx-6 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
+                            disabled={surveyCommodity != "" ? false : true}
+                            onClick={nextSurveiStep}
+                        >
                             + Tambah Foto
                         </div>
                     </div>
                 )
             }
+            {
+                (event == "survey" && surveyStep == 2) && (
+                    <div className="w-screen h-screen bg-black absolute top-0"
+                        style={{
+                            zIndex: 99993
+                        }}
+                    >
+                        <Webcam
+                            audio={false}
+                            screenshotFormat="image/jpeg"
+                            videoConstraints={videoConstraints}
+                            style={{
+                                height: "100vh",
+                                width: "100vw", // Ensures it scales properly
+                                objectFit: "cover", // Helps maintain aspect ratio
+                                zIndex: 99993
+                            }}
+                        >
+                        </Webcam>
+
+                        <div
+                            style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                            }}
+                            className="w-screen"
+                        >
+
+
+                            <div
+                                className={`mb-3 font-semibold text-white text-center text-base p-3 mx-6 rounded bg-blue`}
+                                disabled={surveyCommodity != "" ? false : true}
+                            >
+                                Ambil Foto
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+
         </main>
     )
 }

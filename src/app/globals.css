@@ -24,6 +24,9 @@
 .bg-blue{
   background-color: #0080FB !important;
 }
+.border-blue{
+  border-color: #0080FB !important
+}
 
 .ant-input-lg{
   padding:12px 16px !important;
