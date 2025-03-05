@@ -246,7 +246,7 @@ export default function Collaborator() {
             }
             {
                 (event == "survey" && surveyStep == 2) && (
-                    <div className="w-screen h-screen bg-black absolute top-0"
+                    <div className="w-screen min-h-[100dvh] bg-black absolute top-0"
                         style={{
                             zIndex: 99992
                         }}
@@ -257,7 +257,7 @@ export default function Collaborator() {
                             screenshotFormat="image/jpeg"
                             videoConstraints={videoConstraints}
                             style={{
-                                height: "100vh",
+                                height: "100dvh",
                                 width: "100vw", // Ensures it scales properly
                                 objectFit: "cover", // Helps maintain aspect ratio
                                 zIndex: 99992
@@ -266,7 +266,7 @@ export default function Collaborator() {
                         </Webcam>
 
                         {capturedImage && (
-                            <img src={capturedImage} alt="Captured" className="absolute top-0 h-screen w-screen" />
+                            <img src={capturedImage} alt="Captured" className="absolute top-0 min-h-[100dvh] w-screen" />
                         )}
 
                         <div

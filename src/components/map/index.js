@@ -74,7 +74,7 @@ export default function Map({
   return (
     <div>
 
-      <div ref={mapContainerRef} style={{ height: "100vh", width: "100%" }} />
+      <div ref={mapContainerRef} style={{ height: "100dvh", width: "100%" }} />
 
       <div
         style={{
