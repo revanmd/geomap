@@ -61,7 +61,7 @@ export default function Home() {
               onFieldsChange={handleChangeFields}
               onFinish={handleFinish}
             >
-              <div className="text-base font-medium text-gray mb-2 mt-12">NIK PI SMART <span className="text-red-600">*</span></div>
+              <div className="text-xs font-medium text-gray mb-2 mt-12">NIK PI SMART <span className="text-red-600">*</span></div>
               <Form.Item
                 className="mt-2"
                 name={"username"}
@@ -69,7 +69,7 @@ export default function Home() {
               >
                 <Input className="mt-2" placeholder="Masukan No. PI SMART" size="large"></Input>
               </Form.Item>
-              <div className="text-base font-medium text-gray">Password <span className="text-red-600">*</span></div>
+              <div className="text-xs font-medium text-gray">Password <span className="text-red-600">*</span></div>
               <Form.Item
                 name={"password"}
                 rules={[{ required: true, message: "Tolong masukan Password anda" }]}
@@ -87,17 +87,17 @@ export default function Home() {
             </Form>
 
             <div className="mt-28">
-              <div className="text-center text-blue font-medium text-base cursor-pointer">
+              <div className="text-center text-blue font-medium text-xs cursor-pointer">
                 Dapatkan Bantuan
               </div>
 
-              <div className="text-sm mt-10 text-gray font-regular">
+              <div className="text-xs mt-10 text-gray font-regular">
                 Dengan melanjutkan, Anda menyetujui Syarat dan Ketentuan dan mengakui Pemberitahuan Privasi kami
               </div>
             </div>
           </div>
 
-          <div className="text-center text-sm font-regular w-full"
+          <div className="text-center text-xs font-regular w-full"
             style={{
               position: 'absolute',
               bottom: '10px'
