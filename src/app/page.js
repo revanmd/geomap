@@ -1,9 +1,11 @@
 "use client"
 
 import { Col, Form, Image, Input, Row } from "antd";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function Home() {
+  const router = useRouter()
   const [FormLogin] = Form.useForm()
   const [isFilled, setIsFilled] = useState(false)
 
@@ -14,6 +16,11 @@ export default function Home() {
     } else {
       setIsFilled(false)
     }
+  }
+
+  const handleFinish = () => {
+    const values = FormLogin.getFieldsValue()
+    router.push("/collaborator/main")
   }
 
 
@@ -52,6 +59,7 @@ export default function Home() {
               form={FormLogin}
               layout="vertical"
               onFieldsChange={handleChangeFields}
+              onFinish={handleFinish}
             >
               <div className="text-base font-medium text-gray mb-2 mt-12">NIK PI SMART <span className="text-red-600">*</span></div>
               <Form.Item

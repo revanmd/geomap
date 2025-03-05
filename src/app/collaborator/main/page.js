@@ -13,12 +13,12 @@ const MapComponent = dynamic(() => import("@/components/map"), {
 
 export default function Collaborator() {
     // form-filling, detail, tagging
-    const [event, setEvent] = useState('survey')
-    const [surveyStep, setSurveyStep] = useState(1)
+    const [event, setEvent] = useState('view')
+    const [surveyStep, setSurveyStep] = useState(0)
     const [screen, setScreen] = useState('minimize')
 
     const callbackPressMap = () => {
-        setEvent('survey')
+        setSurveyStep(1)
     }
 
     const clickedAddMarker = () => {
@@ -60,7 +60,7 @@ export default function Collaborator() {
                         <div className="glass-effect w-screen px-5 py-4">
                             <button
                                 onClick={clickedAddMarker}
-                                className="w-full bg-blue text-white text-center font-semibold rounded py-3 px-2 shadow-md"
+                                className="w-full bg-blue text-white text-center font-semibold rounded py-3 px-2 shadow-lg"
                             >+ Tambahkan Penanda</button>
                         </div>
 
@@ -93,7 +93,7 @@ export default function Collaborator() {
                             zIndex: 9999
                         }}
                     >
-                        <div className="bg-white ml-5 p-3 rounded-full text-blue shadow-sm"
+                        <div className="bg-white ml-5 p-3 rounded-full text-blue shadow-lg"
                             onClick={clickedCloseSurvey}
                         >
                             <ArrowLeft size={22} />
