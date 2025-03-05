@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <main>
       <Row>
-        <Col lg={8} span={24} className="min-h-[100dvh]">
+        <Col lg={8} span={24} className="h-[100dvh]">
           <svg viewBox="0 0 360 360" fill="none" xmlns="http://www.w3.org/2000/svg"
             style={{
               position: "absolute",
@@ -106,7 +106,7 @@ export default function Home() {
             © 2025 PT Pupuk Indonesia
           </div>
         </Col>
-        <Col lg={16} span={24} className="disnone min-h-[100dvh]">
+        <Col lg={16} span={24} className="disnone h-[100dvh]">
           <img src="https://geospi.vercel.app/sawah.png" style={{
             height: '100vh',
             width: '100%'

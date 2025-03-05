@@ -156,13 +156,6 @@ export default function Map({
           </div>
         </div>
       </Drawer>
-
-
-      <div>
-
-      </div>
-
-
     </div>
   );
 }

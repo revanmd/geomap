@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X } from "lucide-react";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { message } from "antd";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -27,7 +28,9 @@ export default function Collaborator() {
     }
 
 
-
+    useEffect(()=>{
+        message.success("Komoditas berhasil ditambahkan")
+    },[])
 
     ////////////////////////////////////////////////////////////////
     //// SURVEY
@@ -39,7 +42,7 @@ export default function Collaborator() {
 
     const clickedCloseSurvey = () => {
         setEvent('view')
-        setSurveyCommodity("")
+        resetSurvey()
     }
 
     const nextSurveiStep = () => {
@@ -53,6 +56,18 @@ export default function Collaborator() {
     }
 
 
+    const resetSurvey = () => {
+        setSurveyCommodity("")
+        setSurveyStep(0)
+        setCapturedImage("")
+    }
+
+    const finishSurvey = () => {
+        setEvent("view")
+        resetSurvey()
+    }
+
+
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
 
@@ -60,7 +75,7 @@ export default function Collaborator() {
         facingMode: "environment"
     };
     const webcamRef = useRef(null)
-    const [capturedImage, setCapturedImage] = useState(null);
+    const [capturedImage, setCapturedImage] = useState("");
     const captureWebcam = useCallback(() => {
         if (webcamRef.current) {
             const imageSrc = webcamRef.current.getScreenshot();
@@ -99,11 +114,11 @@ export default function Collaborator() {
                                 <Map size={23} />
                                 <span className="text-sm">Jelajah</span>
                             </Link>
-                            <Link href="/data-survey" className="flex flex-col items-center text-blue">
+                            <Link href="/data-survey" className="flex flex-col items-center text-gray-500">
                                 <SquareMenu size={23} />
                                 <span className="text-sm">Data Survey</span>
                             </Link>
-                            <Link href="/akun" className="flex flex-col items-center text-blue">
+                            <Link href="/akun" className="flex flex-col items-center text-gray-500">
                                 <CircleUserRound size={23} />
                                 <span className="text-sm">Akun</span>
                             </Link>
@@ -246,7 +261,7 @@ export default function Collaborator() {
             }
             {
                 (event == "survey" && surveyStep == 2) && (
-                    <div className="w-screen min-h-[100dvh] bg-black absolute top-0"
+                    <div className="w-screen h-[100dvh] bg-black absolute top-0"
                         style={{
                             zIndex: 99992
                         }}
@@ -265,26 +280,63 @@ export default function Collaborator() {
                         >
                         </Webcam>
 
-                        {capturedImage && (
-                            <img src={capturedImage} alt="Captured" className="absolute top-0 min-h-[100dvh] w-screen" />
-                        )}
+                        {
+                            capturedImage && (
+                                <img src={capturedImage} alt="Captured" className="absolute top-0 h-[100dvh] w-screen" />
+                            )
+                        }
 
-                        <div
-                            style={{
-                                position: 'absolute',
-                                bottom: 0,
-                                left: 0,
-                            }}
-                            className="w-screen"
-                        >
-                            <div
-                                className={`mb-3 font-semibold text-white text-center text-base p-3 mx-6 rounded bg-blue cursor-pointer`}
-                                disabled={surveyCommodity != "" ? false : true}
-                                onClick={captureWebcam}
-                            >
-                                Ambil Foto
-                            </div>
-                        </div>
+                        {
+                            capturedImage && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                    }}
+                                    className="w-screen bg-white py-3"
+                                >
+                                    <div
+                                        className={`font-semibold text-white text-center text-base p-3 mx-6 rounded bg-blue cursor-pointer mb-3`}
+                                        onClick={finishSurvey}
+                                    >
+                                        Simpan Foto
+                                    </div>
+                                    <div
+                                        className={`border border-gray-300  font-semibold text-center text-base p-3 mx-6 rounded cursor-pointer`}
+                                        onClick={()=>{
+                                            setCapturedImage("")
+                                        }}
+                                    >
+                                        Ambil ulang foto
+                                    </div>
+
+                                </div>
+                            )
+                        }
+
+
+
+                        {
+                            capturedImage == "" && (
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        bottom: 0,
+                                        left: 0,
+                                    }}
+                                    className="w-screen bg-white"
+                                >
+                                    <div
+                                        className={`mb-3 border border-gray-300 font-semibold text-white text-center text-base p-3 my-3 mx-6 rounded bg-blue cursor-pointer`}
+                                        disabled={surveyCommodity != "" ? false : true}
+                                        onClick={captureWebcam}
+                                    >
+                                        Ambil Foto
+                                    </div>
+                                </div>
+                            )
+                        }
 
 
                     </div>
