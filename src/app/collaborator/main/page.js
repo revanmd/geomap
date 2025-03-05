@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X } from "lucide-react";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -56,10 +56,17 @@ export default function Collaborator() {
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
 
-    ///////////////////////////////////////////////////////////////////
     const videoConstraints = {
         facingMode: "environment"
     };
+    const webcamRef = useRef(null)
+    const [capturedImage, setCapturedImage] = useState(null);
+    const captureWebcam = useCallback(() => {
+        if (webcamRef.current) {
+            const imageSrc = webcamRef.current.getScreenshot();
+            setCapturedImage(imageSrc);
+        }
+    }, [webcamRef]);
 
 
     return (
@@ -241,10 +248,11 @@ export default function Collaborator() {
                 (event == "survey" && surveyStep == 2) && (
                     <div className="w-screen h-screen bg-black absolute top-0"
                         style={{
-                            zIndex: 99993
+                            zIndex: 99992
                         }}
                     >
                         <Webcam
+                            ref={webcamRef}
                             audio={false}
                             screenshotFormat="image/jpeg"
                             videoConstraints={videoConstraints}
@@ -252,10 +260,14 @@ export default function Collaborator() {
                                 height: "100vh",
                                 width: "100vw", // Ensures it scales properly
                                 objectFit: "cover", // Helps maintain aspect ratio
-                                zIndex: 99993
+                                zIndex: 99992
                             }}
                         >
                         </Webcam>
+
+                        {capturedImage && (
+                            <img src={capturedImage} alt="Captured" className="absolute top-0 h-screen w-screen" />
+                        )}
 
                         <div
                             style={{
@@ -265,15 +277,16 @@ export default function Collaborator() {
                             }}
                             className="w-screen"
                         >
-
-
                             <div
-                                className={`mb-3 font-semibold text-white text-center text-base p-3 mx-6 rounded bg-blue`}
+                                className={`mb-3 font-semibold text-white text-center text-base p-3 mx-6 rounded bg-blue cursor-pointer`}
                                 disabled={surveyCommodity != "" ? false : true}
+                                onClick={captureWebcam}
                             >
                                 Ambil Foto
                             </div>
                         </div>
+
+
                     </div>
                 )
             }
