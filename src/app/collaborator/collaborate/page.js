@@ -38,23 +38,23 @@ export default function Collaborator() {
                 className="bg-white pt-20 w-full pb-3 overflow-hidden"
             >
                 <div className="flex justify-around">
-                    <div className="w-20 text-blue text-center">
+                    <div className="w-20 text-blue text-center cursor-pointer">
                         <div className="text-xl font-semibold">27</div>
                         <div className="text-xs leading-[1]">Semua</div>
                     </div>
-                    <div className="w-20 text-gray-500 text-center">
+                    <div className="w-20 text-gray-500 text-center cursor-pointer">
                         <div className="text-xl font-semibold">27</div>
                         <div className="text-xs leading-[1]">Padi</div>
                     </div>
-                    <div className="w-20 text-gray-500 text-center">
+                    <div className="w-20 text-gray-500 text-center cursor-pointer">
                         <div className="text-xl font-semibold">27</div>
                         <div className="text-xs leading-[1]">Jagung</div>
                     </div>
-                    <div className="w-20 text-gray-500 text-center">
+                    <div className="w-20 text-gray-500 text-center cursor-pointer">
                         <div className="text-xl font-semibold">27</div>
                         <div className="text-xs leading-[1]">Tebu</div>
                     </div>
-                    <div className="w-20 text-gray-500 text-center">
+                    <div className="w-20 text-gray-500 text-center cursor-pointer">
                         <div className="text-xl font-semibold">27</div>
                         <div className="text-xs leading-[1]">Lainnya</div>
                     </div>

@@ -132,6 +132,7 @@ export default function Map({
       <Drawer
         title="Ubah Jenis Peta"
         placement="bottom"
+        closeIcon={false}
         onClose={onCloseSelectMap}
         open={isSelectMapOpen}
         zIndex={99991}
