@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { LoadingOutlined } from '@ant-design/icons';
 import useLeafletMap from "./hooks/useLeafletMap";
 import { Compass, Crosshair, Layers, Search } from "lucide-react";
-import { Drawer, Spin } from "antd";
+import { Drawer, Spin, Modal } from "antd";
+import { motion } from "framer-motion";
 
 export default function Map({
   event,
@@ -17,6 +18,8 @@ export default function Map({
   onMapReady
 }) {
   const [zoom, setZoom] = useState(11)
+  const [isActiveGPS, setIsActiveGPS] = useState(false)
+  const [loadingGPS, setLoadingGPS] = useState(false)
 
   const {
     mapContainerRef,
@@ -37,6 +40,7 @@ export default function Map({
   });
 
   const onGeolocationUpdate = () => {
+    setLoadingGPS(true)
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -44,13 +48,17 @@ export default function Map({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           }, 100, 20);
+          setIsActiveGPS(true)
+          setLoadingGPS(false)
         },
         (error) => {
           alert(error.message);
+          setLoadingGPS(false)
         }
       );
     } else {
       alert("Geolocation is not supported by your browser.");
+      setLoadingGPS(false)
     }
   }
 
@@ -163,6 +171,52 @@ export default function Map({
           </div>
         </div>
       </Drawer>
+
+
+      <Modal
+        footer={false}
+        open={!isActiveGPS}
+        zIndex={9999999}
+        centered
+        closeIcon={false}
+        className="modal-margin"
+      >
+        <h2 className="text-lg text-black text-center font-semibold">
+          Izinkan Akses Lokasi
+        </h2>
+        <p className="text-sm text-center mt-3 mb-3 leading-5">
+          Kami memerlukan akses lokasi Anda untuk mendapatkan lokasi yang akurat untuk mendukung layanan dan fungsi aplikasi
+        </p>
+
+        <button
+          className={`py-3 w-full rounded font-semibold text-white mt-3 bg-blue`}
+          onClick={onGeolocationUpdate}
+        >
+          Ya, Izinkan
+        </button>
+      </Modal>
+
+      {
+        loadingGPS && (
+          <motion.div
+            className="loading-container text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+              <Spin indicator={<LoadingOutlined style={{ fontSize: 48, color: "white" }} spin />} />
+              <div className="text-xs text-white mt-3" style={{ lineHeight: "18px" }}>
+                Mohon tunggu ya . . <br />
+                Kami sedang mencari lokasi Anda
+              </div>
+            </div>
+          </motion.div>
+        )
+      }
+
+
     </div>
   );
 }
