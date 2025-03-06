@@ -41,6 +41,7 @@ export default function Map({
 
   const onGeolocationUpdate = () => {
     setLoadingGPS(true)
+    setIsActiveGPS(true)
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -53,11 +54,13 @@ export default function Map({
         },
         (error) => {
           alert(error.message);
+          setIsActiveGPS(false)
           setLoadingGPS(false)
         }
       );
     } else {
       alert("Geolocation is not supported by your browser.");
+      setIsActiveGPS(false)
       setLoadingGPS(false)
     }
   }
