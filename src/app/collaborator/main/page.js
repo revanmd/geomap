@@ -6,6 +6,8 @@ import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { message } from "antd";
+import { useMessage } from "@/context/messageContext";
+import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -14,6 +16,18 @@ const MapComponent = dynamic(() => import("@/components/map"), {
 
 
 export default function Collaborator() {
+    ////////////////////////////////
+    // CONTEXT
+    const { showMessage } = useMessage()
+
+
+    ////////////////////////////////
+    // PROPS DRILLDOWN
+    const [mapFunctions, setMapFunctions] = useState(null)
+    const handleMapReady = (mapRefs) => {
+        setMapFunctions(mapRefs)
+    }
+
     // form-filling, detail, tagging
     const [event, setEvent] = useState('view')
     const [surveyStep, setSurveyStep] = useState(0)
@@ -27,10 +41,6 @@ export default function Collaborator() {
         setEvent('survey')
     }
 
-
-    useEffect(()=>{
-        message.success("Komoditas berhasil ditambahkan")
-    },[])
 
     ////////////////////////////////////////////////////////////////
     //// SURVEY
@@ -63,10 +73,14 @@ export default function Collaborator() {
     }
 
     const finishSurvey = () => {
-        setEvent("view")
+        showMessage(
+            "Komoditas berhasil ditambah", 
+            <ChecklistIcon/>
+        )
+        mapFunctions.appendMarker(surveyCommodity)
+        setEvent("survey")
         resetSurvey()
     }
-
 
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
@@ -90,6 +104,7 @@ export default function Collaborator() {
                 event={event}
                 screen={screen}
                 callbackPressMap={callbackPressMap}
+                onMapReady={handleMapReady}
             />
 
 
@@ -105,22 +120,22 @@ export default function Collaborator() {
                         <div className="glass-effect w-screen px-5 py-4">
                             <button
                                 onClick={clickedAddMarker}
-                                className="w-full bg-blue text-white text-center font-semibold rounded py-3 px-2 shadow-lg"
+                                className="w-full bg-blue text-white text-center font-semibold rounded py-3 px-2 shadow-lg text-sm"
                             >+ Tambahkan Penanda</button>
                         </div>
 
                         <div className="relative w-screen justify-around py-3 flex border bg-white">
                             <Link href="/jelajah" className="flex flex-col items-center text-blue font-medium">
                                 <Map size={23} />
-                                <span className="text-sm">Jelajah</span>
+                                <span className="text-xs">Jelajah</span>
                             </Link>
                             <Link href="/data-survey" className="flex flex-col items-center text-gray-500">
                                 <SquareMenu size={23} />
-                                <span className="text-sm">Data Survey</span>
+                                <span className="text-xs">Data Survey</span>
                             </Link>
                             <Link href="/akun" className="flex flex-col items-center text-gray-500">
                                 <CircleUserRound size={23} />
-                                <span className="text-sm">Akun</span>
+                                <span className="text-xs">Akun</span>
                             </Link>
                         </div>
 
@@ -160,12 +175,10 @@ export default function Collaborator() {
                     >
                         <div className="m-3">
                             <div className="bg-blue-100 flex p-3 items-center">
-                                <div className="w-8 flex mr-3">
-                                    <div className="text-xs text-white bg-blue rounded-full w-5 h-5 text-center">
-                                        i
-                                    </div>
+                                <div className="w-5 flex mr-2">
+                                    <InfoIcon/>
                                 </div>
-                                <div className="flex-auto text-sm font-semibold">
+                                <div className="flex-auto text-xs font-semibold">
                                     Silakan pilih titik di dalam radius area Anda untuk menetapkan komoditas yang tersedia
                                 </div>
                             </div>
@@ -204,7 +217,7 @@ export default function Collaborator() {
                                 }}
                             >
                                 <img src="/padi.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-sm mt-1.5">
+                                <div className="font-semibold text-xs mt-1.5">
                                     Padi
                                 </div>
                             </div>
@@ -217,7 +230,7 @@ export default function Collaborator() {
                                 }}
                             >
                                 <img src="/jagung.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-sm mt-1.5">
+                                <div className="font-semibold text-xs mt-1.5">
                                     Jagung
                                 </div>
                             </div>
@@ -230,7 +243,7 @@ export default function Collaborator() {
                                 }}
                             >
                                 <img src="/tebu.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-sm mt-1.5">
+                                <div className="font-semibold text-xs mt-1.5">
                                     Tebu
                                 </div>
                             </div>
@@ -243,14 +256,14 @@ export default function Collaborator() {
                                 }}
                             >
                                 <img src="/other.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-sm mt-1.5">
+                                <div className="font-semibold text-xs mt-1.5">
                                     Lainnya
                                 </div>
                             </div>
                         </div>
 
                         <div
-                            className={`mb-3 font-semibold text-white text-center text-base p-3 mx-6 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
+                            className={`mb-3 font-semibold text-white text-center text-sm p-3 mx-6 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
                             disabled={surveyCommodity != "" ? false : true}
                             onClick={nextSurveiStep}
                         >
@@ -297,13 +310,13 @@ export default function Collaborator() {
                                     className="w-screen bg-white py-3"
                                 >
                                     <div
-                                        className={`font-semibold text-white text-center text-base p-3 mx-6 rounded bg-blue cursor-pointer mb-3`}
+                                        className={`text-sm font-semibold text-white text-center text-sm p-3 mx-6 rounded bg-blue cursor-pointer mb-3`}
                                         onClick={finishSurvey}
                                     >
                                         Simpan Foto
                                     </div>
                                     <div
-                                        className={`border border-gray-300  font-semibold text-center text-base p-3 mx-6 rounded cursor-pointer`}
+                                        className={`text-sm border border-gray-300  font-semibold text-center text-sm p-3 mx-6 rounded cursor-pointer`}
                                         onClick={()=>{
                                             setCapturedImage("")
                                         }}
@@ -328,7 +341,7 @@ export default function Collaborator() {
                                     className="w-screen bg-white"
                                 >
                                     <div
-                                        className={`mb-3 border border-gray-300 font-semibold text-white text-center text-base p-3 my-3 mx-6 rounded bg-blue cursor-pointer`}
+                                        className={`text-sm mb-3 border border-gray-300 font-semibold text-white text-center text-sm p-3 my-3 mx-6 rounded bg-blue cursor-pointer`}
                                         disabled={surveyCommodity != "" ? false : true}
                                         onClick={captureWebcam}
                                     >

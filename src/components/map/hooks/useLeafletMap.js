@@ -3,6 +3,8 @@ import L, { marker } from "leaflet";
 import "leaflet-rotate";
 import "leaflet/dist/leaflet.css";
 import { IsPointInRadius } from "../helper";
+import { useMessage } from "@/context/messageContext";
+import { CancleIcon } from "@/components/icon";
 
 export default function useLeafletMap({
   event,
@@ -14,6 +16,10 @@ export default function useLeafletMap({
   onPressMap,
   onReleaseMap,
 } = {}) {
+  ////////////////////////////////
+  // GLOBAL CONTEXT
+  const { showMessage } = useMessage()
+
   const [GPSCenter, setGPSCenter] = useState(null);
   const GPSCenterRef = useRef(null);
 
@@ -51,7 +57,6 @@ export default function useLeafletMap({
         const { lat, lng } = event.latlng;
         //mapInstanceRef.current.setView(event.latlng);
 
-
         if (GPSCenterRef.current && eventRef.current == "survey") {
           if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 100)) {
             if (markerAddRef.current) {
@@ -65,8 +70,14 @@ export default function useLeafletMap({
             }).addTo(mapInstanceRef.current);
             onPressMap({ lat, lng });
           } else {
+            showMessage(
+              "Titik yang dipilih berada di luar radius area Anda. Silakan pilih titik di dalam area atau dekati lokasi komoditas",
+              <CancleIcon />
+            )
             mapInstanceRef.current.setView(event.latlng);
           }
+        } else {
+          mapInstanceRef.current.setView(event.latlng);
         }
 
 
@@ -134,20 +145,6 @@ export default function useLeafletMap({
     }
   }, []);
 
-  const drawMarkers = useCallback((markerData) => {
-    if (!mapInstanceRef.current || !markerLayerRef.current) return;
-    markerLayerRef.current.clearLayers();
-    markerData.forEach(({ position, icon, data }) => {
-      const marker = L.marker(position, { icon: icon || undefined }).addTo(markerLayerRef.current);
-      if (onClickMarker) marker.on("click", () => onClickMarker(data));
-    });
-  }, [onClickMarker]);
-
-  const filterMarkers = useCallback((filterFn) => {
-    if (!mapInstanceRef.current || !markerLayerRef.current) return;
-    const filteredMarkers = markers.filter(filterFn);
-    drawMarkers(filteredMarkers);
-  }, [markers, drawMarkers]);
 
   const setGpsLocation = useCallback((center, radius = 100, zoom = 20) => {
     if (!mapInstanceRef.current) return;
@@ -184,14 +181,59 @@ export default function useLeafletMap({
     }
   }, []);
 
+
+  const appendMarker = useCallback((type) => {
+    if (!markerLayerRef.current) return;
+
+    const currentMarkerAddPosition = markerAddRef.current.getLatLng();
+    let options = null
+    
+    if(type == "padi"){
+      options = {
+        iconUrl: '/marker-padi.png',
+        iconSize: [32, 38],
+      }
+    }else if (type == "jagung"){
+      options = {
+        iconUrl: '/marker-jagung.png',
+        iconSize: [32, 38],
+      }
+    }else if (type == "tebu"){
+      options = {
+        iconUrl: '/marker-tebu.png',
+        iconSize: [32, 38],
+      }
+    }else{
+      options = {
+        iconUrl: '/marker-other.png',
+        iconSize: [32, 38],
+      }
+    }
+
+    const marker = L.marker(currentMarkerAddPosition, {
+      icon: L.icon(options),
+    }).addTo(markerLayerRef.current);
+
+    if (markerAddRef.current) {
+      mapInstanceRef.current.removeLayer(markerAddRef.current);
+    }
+
+    return marker; // Return the marker so it can be removed later
+  }, []);
+
+  const removeMarker = useCallback((marker) => {
+    if (!markerLayerRef.current || !marker) return;
+    markerLayerRef.current.removeLayer(marker);
+  }, []);
+
   return {
     mapContainerRef,
     setCenter,
     addLayer,
     removeLayer,
-    drawMarkers,
-    filterMarkers,
     setGpsLocation,
-    setBaseMap
+    setBaseMap,
+    appendMarker,
+    removeMarker
   };
 }
