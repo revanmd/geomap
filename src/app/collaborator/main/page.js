@@ -117,10 +117,10 @@ export default function Collaborator() {
                             zIndex: 9999
                         }}
                     >
-                        <div className="glass-effect w-screen px-5 py-4">
+                        <div className="glass-effect w-screen px-5 py-3">
                             <button
                                 onClick={clickedAddMarker}
-                                className="w-full bg-blue text-white text-center font-semibold rounded py-3 px-2 shadow-lg text-sm"
+                                className="w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
                             >+ Tambahkan Penanda</button>
                         </div>
 

@@ -103,25 +103,25 @@ export default function Map({
         className="w-screen"
       >
         {event == "view" && (
-          <div className="bg-white rounded-lg mx-5 py-2 px-3 mb-3 flex text-black shadow-sm cursor-pointer">
-            <div className="flex w-8"><Search style={{ top: '2px', position: 'relative' }} size={20} /></div>
-            <div className="flex flex-auto"><input type="text" style={{ width: '100%' }} placeholder="Cari Lokasi" /></div>
+          <div className="bg-white rounded-lg mx-5 py-1 px-3 mb-3 flex text-black shadow-lg cursor-pointer">
+            <div className="flex w-8"><Search style={{ top: '7px', position: 'relative' }} size={20} /></div>
+            <div className="flex flex-auto"><input type="text" style={{ width: '100%', height:'35px' }} className="text-sm" placeholder="Cari Lokasi" /></div>
           </div>
         )}
 
         <div className="float-right mr-5">
           <div
-            className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
+            className="bg-white rounded-full p-2 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onShowSelectMap}
           >
-            <Layers size={22} />
+            <Layers size={20} />
           </div>
           <br></br>
           <div
-            className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
+            className="bg-white rounded-full p-2 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onGeolocationUpdate}
           >
-            <Crosshair size={22} />
+            <Crosshair size={20} />
           </div>
           <br></br>
           {/* <div
@@ -184,10 +184,10 @@ export default function Map({
         closeIcon={false}
         className="modal-margin"
       >
-        <h2 className="text-lg text-black text-center font-semibold">
+        <h2 className="text-base text-black text-center font-semibold">
           Izinkan Akses Lokasi
         </h2>
-        <p className="text-sm text-center mt-3 mb-3 leading-5">
+        <p className="text-xs text-center mt-3 mb-3 leading-5">
           Kami memerlukan akses lokasi Anda untuk mendapatkan lokasi yang akurat untuk mendukung layanan dan fungsi aplikasi
         </p>
 
