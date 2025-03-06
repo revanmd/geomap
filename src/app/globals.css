@@ -10,6 +10,9 @@
 .text-gray{
   color : #424242 !important
 }
+.text-gray-500{
+  color : #757575 !important;
+}
 
 .text-blue{
   color: #0080FB !important;

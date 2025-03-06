@@ -117,7 +117,7 @@ export default function Collaborator() {
                             zIndex: 9999
                         }}
                     >
-                        <div className="glass-effect w-screen px-5 py-3">
+                        <div className="glass-effect w-screen px-3 py-3">
                             <button
                                 onClick={clickedAddMarker}
                                 className="w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
@@ -125,16 +125,16 @@ export default function Collaborator() {
                         </div>
 
                         <div className="relative w-screen justify-around py-3 flex border bg-white">
-                            <Link href="/jelajah" className="flex flex-col items-center text-blue font-medium">
-                                <Map size={23} />
+                            <Link href="/collaborator/main" className="flex flex-col items-center text-blue font-medium">
+                                <Map size={22} />
                                 <span className="text-xs">Jelajah</span>
                             </Link>
-                            <Link href="/data-survey" className="flex flex-col items-center text-gray-500">
-                                <SquareMenu size={23} />
+                            <Link href="/collaborator/collaborate" className="flex flex-col items-center text-gray-500">
+                                <SquareMenu size={22} />
                                 <span className="text-xs">Data Survey</span>
                             </Link>
-                            <Link href="/akun" className="flex flex-col items-center text-gray-500">
-                                <CircleUserRound size={23} />
+                            <Link href="/account" className="flex flex-col items-center text-gray-500">
+                                <CircleUserRound size={22} />
                                 <span className="text-xs">Akun</span>
                             </Link>
                         </div>

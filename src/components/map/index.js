@@ -11,6 +11,8 @@ import { motion } from "framer-motion";
 export default function Map({
   event,
   screen,
+  gps = true,
+  expandedBar = false,
   callbackClickMarker,
   callbackCancelMarker,
   callbackPressMap,
@@ -18,7 +20,7 @@ export default function Map({
   onMapReady
 }) {
   const [zoom, setZoom] = useState(11)
-  const [isActiveGPS, setIsActiveGPS] = useState(false)
+  const [isActiveGPS, setIsActiveGPS] = useState(!gps)
   const [loadingGPS, setLoadingGPS] = useState(false)
 
   const {
@@ -103,32 +105,27 @@ export default function Map({
         className="w-screen"
       >
         {event == "view" && (
-          <div className="bg-white rounded-lg mx-5 py-1 px-3 mb-3 flex text-black shadow-lg cursor-pointer">
-            <div className="flex w-8"><Search style={{ top: '7px', position: 'relative' }} size={20} /></div>
+          <div className="bg-white rounded-lg mx-3 py-1 px-3 mb-3 flex text-black cursor-pointer border border-gray-200 items-center">
+            <div className="flex mr-2"><Search size={16} /></div>
             <div className="flex flex-auto"><input type="text" style={{ width: '100%', height:'35px' }} className="text-sm" placeholder="Cari Lokasi" /></div>
           </div>
         )}
 
-        <div className="float-right mr-5">
+        <div className={"absolute right-3 " + (expandedBar ? "top-[125px]" : "") }>
           <div
-            className="bg-white rounded-full p-2 text-gray shadow-lg inline-block mb-1 cursor-pointer"
+            className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onShowSelectMap}
           >
-            <Layers size={20} />
+            <Layers size={22} />
           </div>
           <br></br>
           <div
-            className="bg-white rounded-full p-2 text-gray shadow-lg inline-block mb-1 cursor-pointer"
+            className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onGeolocationUpdate}
           >
-            <Crosshair size={20} />
+            <Crosshair size={22} />
           </div>
           <br></br>
-          {/* <div
-            className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
-          >
-            <Compass size={22} />
-          </div> */}
         </div>
       </div>
 
