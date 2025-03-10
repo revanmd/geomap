@@ -7,6 +7,7 @@ import useLeafletMap from "./hooks/useLeafletMap";
 import { Compass, Crosshair, Layers, Search } from "lucide-react";
 import { Drawer, Spin, Modal } from "antd";
 import { motion } from "framer-motion";
+import { useLoading } from "@/context/loadingContext";
 
 export default function Map({
   event,
@@ -19,9 +20,10 @@ export default function Map({
   callbackReleaseMap,
   onMapReady
 }) {
+  const { showLoading, hideLoading } = useLoading();
+
   const [zoom, setZoom] = useState(11)
   const [isActiveGPS, setIsActiveGPS] = useState(!gps)
-  const [loadingGPS, setLoadingGPS] = useState(false)
 
   const {
     mapContainerRef,
@@ -29,9 +31,12 @@ export default function Map({
     addLayer,
     removeLayer,
     setGpsLocation,
+    getGpsLocation,
+    getMarkerAddLocation,
     setBaseMap,
     appendMarker,
     removeMarker,
+    initializeMarkers,
   } = useLeafletMap({
     event: event,
     zoom: zoom,
@@ -42,7 +47,7 @@ export default function Map({
   });
 
   const onGeolocationUpdate = () => {
-    setLoadingGPS(true)
+    showLoading("Mohon tunggu ya . . <br /> Kami sedang mencari lokasi Anda");
     setIsActiveGPS(true)
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -52,19 +57,17 @@ export default function Map({
             lng: position.coords.longitude,
           }, 100, 20);
           setIsActiveGPS(true)
-          setLoadingGPS(false)
         },
         (error) => {
           alert(error.message);
           setIsActiveGPS(false)
-          setLoadingGPS(false)
         }
       );
     } else {
       alert("Geolocation is not supported by your browser.");
       setIsActiveGPS(false)
-      setLoadingGPS(false)
     }
+    hideLoading()
   }
 
   useEffect(() => {
@@ -74,6 +77,9 @@ export default function Map({
       onMapReady({
         appendMarker,
         removeMarker,
+        getGpsLocation,
+        getMarkerAddLocation,
+        initializeMarkers,
       });
     }
   }, [])
@@ -196,27 +202,6 @@ export default function Map({
           Ya, Izinkan
         </button>
       </Modal>
-
-      {
-        loadingGPS && (
-          <motion.div
-            className="loading-container text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-              <Spin indicator={<LoadingOutlined style={{ fontSize: 48, color: "white" }} spin />} />
-              <div className="text-xs text-white mt-3" style={{ lineHeight: "18px" }}>
-                Mohon tunggu ya . . <br />
-                Kami sedang mencari lokasi Anda
-              </div>
-            </div>
-          </motion.div>
-        )
-      }
-
 
     </div>
   );

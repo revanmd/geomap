@@ -8,6 +8,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
+import { markerService } from "@/services/markerService";
+import { useLoading } from "@/context/loadingContext";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -19,6 +21,7 @@ export default function Collaborator() {
     ////////////////////////////////
     // CONTEXT
     const { showMessage } = useMessage()
+    const { showLoading, hideLoading } = useLoading();
 
 
     ////////////////////////////////
@@ -65,21 +68,36 @@ export default function Collaborator() {
         }
     }
 
-
     const resetSurvey = () => {
         setSurveyCommodity("")
         setSurveyStep(0)
         setCapturedImage("")
     }
 
-    const finishSurvey = () => {
-        showMessage(
-            "Komoditas berhasil ditambah", 
-            <ChecklistIcon/>
-        )
-        mapFunctions.appendMarker(surveyCommodity)
+    const finishSurvey = async () => {
+        showLoading("Mohon tunggu ...")
+
+        const markerLocation = mapFunctions.getMarkerAddLocation()
+        const marker = {
+            commodity: surveyCommodity,
+            location: {
+                lat: markerLocation.lat,
+                lon: markerLocation.lng
+            }
+        }
+
+        // handle send the request
+        try {
+            await markerService.createMarker(marker);
+            // Flagging as success
+            mapFunctions.appendMarker(surveyCommodity)
+            showMessage("Komoditas berhasil ditambah", <ChecklistIcon />)
+        } catch (error) {
+            showMessage("Gagal menambahkan komoditas", <CancleIcon />)
+        }
         setEvent("survey")
         resetSurvey()
+        hideLoading()
     }
 
     ////////////////////////////////////////////////////////////////
@@ -96,6 +114,26 @@ export default function Collaborator() {
             setCapturedImage(imageSrc);
         }
     }, [webcamRef]);
+
+
+    ////////////////////////////////////////////////////////////////
+    /// DATA
+    const fetchMarker = async () => {
+        try {
+            const markers = await markerService.getMarkers()
+            if (markers.data) {
+                mapFunctions.initializeMarkers(markers.data)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    useEffect(()=>{
+        if(mapFunctions){
+            fetchMarker()
+        }
+    },[mapFunctions])
 
 
     return (
@@ -176,7 +214,7 @@ export default function Collaborator() {
                         <div className="m-3">
                             <div className="bg-blue-100 flex p-3 items-center">
                                 <div className="w-5 flex mr-2">
-                                    <InfoIcon/>
+                                    <InfoIcon />
                                 </div>
                                 <div className="flex-auto text-xs font-semibold">
                                     Silakan pilih titik di dalam radius area Anda untuk menetapkan komoditas yang tersedia
@@ -317,7 +355,7 @@ export default function Collaborator() {
                                     </div>
                                     <div
                                         className={`text-sm border border-gray-300  font-semibold text-center text-sm p-3 mx-6 rounded cursor-pointer`}
-                                        onClick={()=>{
+                                        onClick={() => {
                                             setCapturedImage("")
                                         }}
                                     >

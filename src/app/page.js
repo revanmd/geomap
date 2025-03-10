@@ -1,9 +1,10 @@
 "use client"
 
-import { Col, Form, Image, Input, Row } from "antd";
+import { authService } from "@/services/authService";
+import { Col, Form, Image, Input, message, Row } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
+  
 export default function Home() {
   const router = useRouter()
   const [FormLogin] = Form.useForm()
@@ -18,9 +19,20 @@ export default function Home() {
     }
   }
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     const values = FormLogin.getFieldsValue()
-    router.push("/collaborator/main")
+    try {
+      const response = await authService.login(values.username, values.password);
+      if (response){
+        message.success("Berhasil login")
+        router.push("/collaborator/main")
+      }else{
+        message.error("Username atau password salah")
+      }
+      
+    } catch (err) {
+      message.error("Terdapat kesalahan pada server")
+    }
   }
 
 
