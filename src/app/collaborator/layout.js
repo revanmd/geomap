@@ -20,7 +20,7 @@ export default function Layout({ children }) {
     useEffect(() => {
         const handleBackButton = (event) => {
             event.preventDefault();
-            setShowModal(true);
+            setIsBack(true);
             window.history.pushState(null, "", window.location.href); // Prevent actual back navigation
         };
 
