@@ -11,6 +11,7 @@ import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
+import { CapitalizeFirstLetter, ConvertIsoToIndonesianDate } from "@/utility/utils";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -41,10 +42,50 @@ export default function Collaborator() {
         setSurveyStep(1)
     }
 
+    const callbackClickMarker = (params) => {
+        console.log(params)
+        fetchMarkerDetail(params?.id)
+    }
+
     const clickedAddMarker = () => {
         setEvent('survey')
     }
 
+
+    ////////////////////////////////////////////////////////////////
+    //// DETAIL MARKER
+    const [isDetailOpen, setIsDetailOpen] = useState(false)
+    const [isEditOpen, setIsEditOpen] = useState(false)
+    const [markerDetail, setMarkerDetail] = useState(null)
+    const [uploadedImage, setUploadedImage] = useState("")
+
+    // Fetch and display uploaded image
+    const fetchImage = async (filename) => {
+        try {
+            const blob = await fileService.getFile(filename);
+            const url = URL.createObjectURL(blob);
+            setUploadedImage(url);
+        } catch (error) {
+            console.error("Failed to fetch image:", error);
+        }
+    };
+
+    const fetchMarkerDetail = async (markerId) => {
+        showLoading("Mohon tunggu ...")
+        try {
+            const marker = await markerService.getMarkerById(markerId)
+            await fetchImage(marker?.data?.photo)
+            setMarkerDetail(marker?.data)
+            setIsDetailOpen(true)
+        } catch (error) {
+        } finally {
+            hideLoading()
+        }
+    }
+
+    const onCloseDetail = () => {
+        setIsDetailOpen(false)
+    }
 
     ////////////////////////////////////////////////////////////////
     //// SURVEY
@@ -103,10 +144,10 @@ export default function Collaborator() {
                 // Flagging as success
                 mapFunctions.appendMarker(surveyCommodity)
                 showMessage("Komoditas berhasil ditambah", <ChecklistIcon />)
-            }else{
+            } else {
                 showMessage("Gagal mengupload foto", <CancleIcon />)
             }
-            
+
 
         } catch (error) {
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
@@ -167,6 +208,7 @@ export default function Collaborator() {
                 event={event}
                 screen={screen}
                 callbackPressMap={callbackPressMap}
+                callbackClickMarker={callbackClickMarker}
                 onMapReady={handleMapReady}
             />
 
@@ -418,31 +460,33 @@ export default function Collaborator() {
             }
 
             <Drawer
-                open={false}
+                open={isDetailOpen}
                 placement="bottom"
                 zIndex={999999}
-                height={475}
+                height={460}
                 className="drawer-body-modified rounded-xl"
                 closeIcon={false}
             >
                 <div className="p-3">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h1 className="text-xl font-semibold text-black">Padi</h1>
-                            <h2 className="text-sm text-gray">Ditambahkan 28 February 2025</h2>
+                            <h1 className="text-xl font-semibold text-black">{CapitalizeFirstLetter(markerDetail?.commodity)}</h1>
+                            <h2 className="text-sm text-gray">Ditambahkan {ConvertIsoToIndonesianDate(markerDetail?.updated_at)}</h2>
                         </div>
-                        <h1 className="text-xl font-semibold text-black">
+                        <h1 className="text-xl font-semibold text-black"
+                            onClick={onCloseDetail}
+                        >
                             <X />
                         </h1>
                     </div>
 
 
                     <div className="mt-4">
-                        <img src="/commodity-image.png" className="image-commodity rounded-lg"></img>
+                        <img src={uploadedImage} className="image-commodity rounded-lg"></img>
                     </div>
 
                     <div className="fixed bottom-0 left-0 w-full bg-white p-4">
-                        <div className="flex space-x-5 text-base">
+                        <div className="flex space-x-5 text-sm">
                             <button className="flex-1 border border-red-500 text-red-500 p-2 rounded-lg font-semibold">Hapus</button>
                             <button className="flex-1 bg-blue text-white p-2 rounded-lg font-semibold">Ubah</button>
                         </div>

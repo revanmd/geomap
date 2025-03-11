@@ -203,7 +203,7 @@ export default function useLeafletMap({
     const newMarkers = initialMarkers.map((markerInfo) => {
       console.log(markerInfo)
 
-      const { location, commodity } = markerInfo;
+      const { id, location, commodity } = markerInfo;
       const { lat, lon } = location
       let iconOptions;
       switch (commodity) {
@@ -224,7 +224,14 @@ export default function useLeafletMap({
         icon: L.icon(iconOptions),
       }).addTo(markerLayerRef.current);
 
-      return { marker, lat, lon, commodity };
+      // Attach click event
+      marker.on("click", () => {
+        if (onClickMarker) {
+          onClickMarker({ id, lat, lon, commodity });
+        }
+      });
+
+      return { id, marker, lat, lon, commodity };
     });
 
     setMarkerData(newMarkers);

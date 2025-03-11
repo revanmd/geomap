@@ -1,13 +1,15 @@
 // components/Map.jsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { LoadingOutlined } from '@ant-design/icons';
 import useLeafletMap from "./hooks/useLeafletMap";
 import { Compass, Crosshair, Layers, Search } from "lucide-react";
 import { Drawer, Spin, Modal } from "antd";
 import { motion } from "framer-motion";
 import { useLoading } from "@/context/loadingContext";
+import axios from "axios";
+import { debounce } from "lodash";
 
 export default function Map({
   event,
@@ -96,6 +98,52 @@ export default function Map({
     setIsSelectMapOpen(false)
   };
 
+  ///////////////////////////////////////////////////////////////////////////////////////////
+  /// SEARCH FUNCTIONALITY
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [isDropdownSearchVisible, setDropdownSearchVisible] = useState(false);
+
+
+  const fetchSearchSuggestions = async (input) => {
+    if (!input) {
+      setSearchSuggestions([]);
+      return;
+    }
+    try {
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search`,
+        {
+          params: {
+            q: input,
+            format: "json",
+            addressdetails: 1,
+            limit: 5, // Limit results to 5 locations
+          },
+        }
+      );
+
+      setSearchSuggestions(response.data);
+      setDropdownSearchVisible(true);
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+    }
+  }
+
+  const debouncedFetchSearchSuggestions = useCallback(
+    debounce(fetchSearchSuggestions, 500), // Adjust the debounce delay (500ms)
+    []
+  );
+
+  const handleSelectLocation = (location) => {
+    const lat = parseFloat(location.lat);
+    const lon = parseFloat(location.lon);
+
+    setCenter([lat, lon]); // Move map to selected location
+    setSearchQuery(location.display_name); // Update input field with selected location
+    setSearchSuggestions([]); // Clear suggestions
+    setDropdownSearchVisible(false);
+  };
 
   return (
     <div>
@@ -113,11 +161,46 @@ export default function Map({
         {event == "view" && (
           <div className="bg-white rounded-lg mx-3 py-1 px-3 mb-3 flex text-black cursor-pointer border border-gray-200 items-center">
             <div className="flex mr-2"><Search size={16} /></div>
-            <div className="flex flex-auto"><input type="text" style={{ width: '100%', height:'35px' }} className="text-sm" placeholder="Cari Lokasi" /></div>
+            <div className="flex flex-auto">
+              <input
+                type="text"
+                style={{ width: '100%', height: '35px' }}
+                className="text-sm"
+                placeholder="Cari Lokasi"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  debouncedFetchSearchSuggestions(e.target.value);
+                }}
+                onFocus={()=>{
+                  setDropdownSearchVisible(true)
+                }}
+                onBlur={() => {
+                  setTimeout(()=>{
+                    setDropdownSearchVisible(false)
+                  },500)
+                }}
+              />
+            </div>
           </div>
         )}
 
-        <div className={"absolute right-3 " + (expandedBar ? "top-[125px]" : "") }>
+        {event == "view" && isDropdownSearchVisible && searchSuggestions.length > 0 && (
+          <div className="mx-3">
+            <div className="bg-white border border-gray-200 rounded-lg shadow-md w-full max-h-60 overflow-y-auto ">
+              {searchSuggestions.map((location) => (
+                <div
+                  key={location.place_id}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs"
+                  onClick={() => handleSelectLocation(location)}
+                >
+                  {location.display_name}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={"absolute right-3 " + (expandedBar ? "top-[125px]" : "")}>
           <div
             className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onShowSelectMap}
