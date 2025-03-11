@@ -5,11 +5,12 @@ import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, I
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { message } from "antd";
+import { Drawer, message } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
+import { fileService } from "@/services/fileService";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -76,22 +77,37 @@ export default function Collaborator() {
 
     const finishSurvey = async () => {
         showLoading("Mohon tunggu ...")
-
-        const markerLocation = mapFunctions.getMarkerAddLocation()
-        const marker = {
-            commodity: surveyCommodity,
-            location: {
-                lat: markerLocation.lat,
-                lon: markerLocation.lng
-            }
-        }
-
         // handle send the request
         try {
-            await markerService.createMarker(marker);
-            // Flagging as success
-            mapFunctions.appendMarker(surveyCommodity)
-            showMessage("Komoditas berhasil ditambah", <ChecklistIcon />)
+            const username = "91010196"
+            const name = "Revan Muhammad Dafa"
+            const orgName = "Junior Digitalisasi Reformasi Subsidi"
+            const filename = await uploadFile(capturedImage, `${username}_${surveyCommodity}.png`)
+            if (filename) {
+                // prepare marker
+                const markerLocation = mapFunctions.getMarkerAddLocation()
+                const marker = {
+                    username: username,
+                    name: name,
+                    org_name: orgName,
+                    photo: filename,
+                    commodity: surveyCommodity,
+                    location: {
+                        lat: markerLocation.lat,
+                        lon: markerLocation.lng
+                    }
+                }
+
+                await markerService.createMarker(marker);
+
+                // Flagging as success
+                mapFunctions.appendMarker(surveyCommodity)
+                showMessage("Komoditas berhasil ditambah", <ChecklistIcon />)
+            }else{
+                showMessage("Gagal mengupload foto", <CancleIcon />)
+            }
+            
+
         } catch (error) {
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
         }
@@ -129,11 +145,20 @@ export default function Collaborator() {
         }
     }
 
-    useEffect(()=>{
-        if(mapFunctions){
+    const uploadFile = async (base64Image, filename) => {
+        try {
+            const response = await fileService.uploadFile(base64Image, filename)
+            return response.data.filename
+        } catch (error) {
+            return null
+        }
+    }
+
+    useEffect(() => {
+        if (mapFunctions) {
             fetchMarker()
         }
-    },[mapFunctions])
+    }, [mapFunctions])
 
 
     return (
@@ -388,11 +413,106 @@ export default function Collaborator() {
                                 </div>
                             )
                         }
-
-
                     </div>
                 )
             }
+
+            <Drawer
+                open={false}
+                placement="bottom"
+                zIndex={999999}
+                height={475}
+                className="drawer-body-modified rounded-xl"
+                closeIcon={false}
+            >
+                <div className="p-3">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-xl font-semibold text-black">Padi</h1>
+                            <h2 className="text-sm text-gray">Ditambahkan 28 February 2025</h2>
+                        </div>
+                        <h1 className="text-xl font-semibold text-black">
+                            <X />
+                        </h1>
+                    </div>
+
+
+                    <div className="mt-4">
+                        <img src="/commodity-image.png" className="image-commodity rounded-lg"></img>
+                    </div>
+
+                    <div className="fixed bottom-0 left-0 w-full bg-white p-4">
+                        <div className="flex space-x-5 text-base">
+                            <button className="flex-1 border border-red-500 text-red-500 p-2 rounded-lg font-semibold">Hapus</button>
+                            <button className="flex-1 bg-blue text-white p-2 rounded-lg font-semibold">Ubah</button>
+                        </div>
+                    </div>
+
+                </div>
+            </Drawer>
+
+            <Drawer
+                open={false}
+                placement="bottom"
+                zIndex={999999}
+                height={500}
+                className="drawer-body-modified rounded-xl"
+                closeIcon={false}
+            >
+                <div className="p-3">
+                    <div className="flex justify-between">
+                        <h1 className="text-xl font-semibold text-black">Padi</h1>
+                        <h1 className="text-xl font-semibold text-black">
+                            <X />
+                        </h1>
+                    </div>
+
+                    <h2 className="text-sm mt-3">Tandai dengan komoditas</h2>
+                    <div className="text-center w-full flex justify-around">
+                        <div style={{ width: '70px' }}
+                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                        >
+                            <img src="/padi.png" className="icon-commodity ml-auto mr-auto"></img>
+                            <div className="font-semibold text-xs mt-1.5">
+                                Padi
+                            </div>
+                        </div>
+                        <div style={{ width: '70px' }}
+                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                        >
+                            <img src="/jagung.png" className="icon-commodity ml-auto mr-auto"></img>
+                            <div className="font-semibold text-xs mt-1.5">
+                                Jagung
+                            </div>
+                        </div>
+                        <div style={{ width: '70px' }}
+                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                        >
+                            <img src="/tebu.png" className="icon-commodity ml-auto mr-auto"></img>
+                            <div className="font-semibold text-xs mt-1.5">
+                                Tebu
+                            </div>
+                        </div>
+                        <div style={{ width: '70px' }}
+                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                        >
+                            <img src="/other.png" className="icon-commodity ml-auto mr-auto"></img>
+                            <div className="font-semibold text-xs mt-1.5">
+                                Lainnya
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 className="text-sm">Foto Komoditas</h2>
+                    <img src="/commodity-image.png" className="image-commodity-sm rounded-lg mt-1"></img>
+
+
+                    <div className="fixed bottom-0 left-0 w-full bg-white p-4">
+                        <button className="bg-blue text-white p-2 rounded-lg font-semibold w-full text-base">Simpan Perubahan</button>
+                    </div>
+
+                </div>
+            </Drawer>
 
 
         </main>
