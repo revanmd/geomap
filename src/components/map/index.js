@@ -50,7 +50,7 @@ export default function Map({
   });
 
   const onGeolocationUpdate = () => {
-    showLoading("Mohon tunggu ya . . <br /> Kami sedang mencari lokasi Anda");
+    showLoading("Mohon tunggu ya, Kami sedang mencari lokasi Anda ..");
     setIsActiveGPS(true)
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
