@@ -60,17 +60,18 @@ export default function Map({
             lng: position.coords.longitude,
           }, 100, 20);
           setIsActiveGPS(true)
+          hideLoading()
         },
         (error) => {
-          alert(error.message);
           setIsActiveGPS(false)
+          hideLoading()
         }
       );
     } else {
       alert("Geolocation is not supported by your browser.");
       setIsActiveGPS(false)
+      hideLoading()
     }
-    hideLoading()
   }
 
   useEffect(() => {
