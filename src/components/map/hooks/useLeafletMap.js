@@ -199,6 +199,7 @@ export default function useLeafletMap({
     markerLayerRef.current.clearLayers();
     setMarkerData([]);
 
+
     const newMarkers = initialMarkers.map(({ id, location, commodity }) => {
       const { lat, lon } = location;
       let iconOptions;

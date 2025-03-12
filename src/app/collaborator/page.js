@@ -1,7 +1,7 @@
 "use client"
 
-import Link from "next/link";
 import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X, Camera } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -263,12 +263,43 @@ export default function Collaborator() {
         }
     }
 
+    ////////////////////////////////
+    /// SUMMARY
+
+    const [summary, setSummary] = useState(null)
+
+    const fetchSummary = async () => {
+        try {
+            const summary = await markerService.summary()
+            console.log(summary)
+            setSummary(summary.data)
+        } catch (error) {
+
+        }
+    }
+
 
     ////////////////////////////////////////////////////////////////
     /// DATA
     const fetchMarker = async () => {
         try {
             const markers = await markerService.getMarkers()
+            if (markers.data) {
+                mapFunctions.initializeMarkers(markers.data)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const fetchSelfMarker = async () => {
+        try {
+            const summary = await markerService.summary()
+            if (summary.data) {
+                setSummary(summary.data)
+            }
+
+            const markers = await markerService.getSelfMarkers()
             if (markers.data) {
                 mapFunctions.initializeMarkers(markers.data)
             }
@@ -286,6 +317,31 @@ export default function Collaborator() {
         }
     }
 
+    ////////////////////////////////
+    /// NAVIGATION
+
+    const handleMenuSurvey = () => {
+        showLoading("Mohon tunggu..")
+        setTimeout(() => {
+            fetchMarker()
+            setEvent("view")
+            hideLoading()
+        }, 3000)
+
+
+    }
+    const handleMenuSummary = () => {
+        showLoading("Mohon tunggu..")
+        setTimeout(() => {
+            fetchSelfMarker()
+            setEvent("summary")
+            hideLoading()
+        }, 3000)
+
+    }
+    const handleMenuAccount = () => { }
+
+
     useEffect(() => {
         if (mapFunctions) {
             fetchMarker()
@@ -298,14 +354,52 @@ export default function Collaborator() {
             <MapComponent
                 event={event}
                 screen={screen}
+                expandedBar={event == 'summary' ? true : false}
                 callbackPressMap={callbackPressMap}
                 callbackClickMarker={callbackClickMarker}
                 onMapReady={handleMapReady}
             />
 
+            {
+                event == "summary" && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            zIndex: 999,
+
+                        }}
+                        className="bg-white pt-16 w-full pb-3 overflow-hidden"
+                    >
+                        <div className="flex justify-around">
+                            <div className="w-20 text-gray-500 text-center cursor-pointer">
+                                <div className="text-xl font-semibold">{summary?.count_total || 0}</div>
+                                <div className="text-xs leading-[1]">Semua</div>
+                            </div>
+                            <div className="w-20 text-gray-500 text-center cursor-pointer">
+                                <div className="text-xl font-semibold">{summary?.count_padi || 0}</div>
+                                <div className="text-xs leading-[1]">Padi</div>
+                            </div>
+                            <div className="w-20 text-gray-500 text-center cursor-pointer">
+                                <div className="text-xl font-semibold">{summary?.count_jagung || 0}</div>
+                                <div className="text-xs leading-[1]">Jagung</div>
+                            </div>
+                            <div className="w-20 text-gray-500 text-center cursor-pointer">
+                                <div className="text-xl font-semibold">{summary?.count_tebu || 0}</div>
+                                <div className="text-xs leading-[1]">Tebu</div>
+                            </div>
+                            <div className="w-20 text-gray-500 text-center cursor-pointer">
+                                <div className="text-xl font-semibold">{summary?.count_other || 0}</div>
+                                <div className="text-xs leading-[1]">Lainnya</div>
+                            </div>
+                        </div>
+                    </ div>
+                )
+            }
+
 
             {
-                event == "view" && (
+                event != "survey" && (
                     <div
                         style={{
                             position: 'absolute',
@@ -313,26 +407,51 @@ export default function Collaborator() {
                             zIndex: 9999
                         }}
                     >
-                        <div className="glass-effect w-screen px-3 py-3">
-                            <button
-                                onClick={clickedAddMarker}
-                                className="w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
-                            >+ Tambahkan Penanda</button>
-                        </div>
+                        {
+                            event == "view" && (
+                                <AnimatePresence>
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: 10 }}
+                                        transition={{ duration: 0.1, ease: "easeInOut" }}
+                                    >
+                                        <div className="glass-effect w-screen px-3 py-3">
+                                            <button
+                                                onClick={clickedAddMarker}
+                                                className="w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
+                                            >+ Tambahkan Penanda</button>
+                                        </div>
+                                    </motion.div>
+                                </AnimatePresence>
+
+
+                            )
+                        }
 
                         <div className="relative w-screen justify-around py-3 flex border bg-white">
-                            <Link href="/collaborator/main" className="flex flex-col items-center text-blue font-medium">
+                            <div className={`flex flex-col items-center font-medium 
+                                    ${event != "summary" ? "text-blue" : "text-gray-500"
+                                }`}
+                                onClick={handleMenuSurvey}
+                            >
                                 <Map size={22} />
                                 <span className="text-xs">Jelajah</span>
-                            </Link>
-                            <Link href="/collaborator/collaborate" className="flex flex-col items-center text-gray-500">
+                            </div>
+                            <div className={`flex flex-col items-center font-medium 
+                                    ${event == "summary" ? "text-blue" : "text-gray-500"
+                                }`}
+                                onClick={handleMenuSummary}
+                            >
                                 <SquareMenu size={22} />
                                 <span className="text-xs">Data Survey</span>
-                            </Link>
-                            <Link href="/account" className="flex flex-col items-center text-gray-500">
+                            </div>
+                            <div className="flex flex-col items-center text-gray-500"
+                                onClick={handleMenuAccount}
+                            >
                                 <CircleUserRound size={22} />
                                 <span className="text-xs">Akun</span>
-                            </Link>
+                            </div>
                         </div>
 
                     </div>
@@ -394,12 +513,14 @@ export default function Collaborator() {
                         }}
                         className="bg-white w-screen"
                     >
-                        <div className="flex justify-between px-5 pt-2 items-center">
-                            <div className="flex font-semibold text-sm text-black">
+                        <div className="flex justify-between px-5 pt-3 items-center">
+                            <div className="flex font-semibold text-base text-black">
                                 Tandai dengan komoditas
                             </div>
-                            <div className="flex text-gray">
-                                <X size={24} />
+                            <div className="flex text-gray"
+                                onClick={clickedCloseSurvey}
+                            >
+                                <X className="text-sm" />
                             </div>
                         </div>
 

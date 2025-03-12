@@ -160,7 +160,7 @@ export default function Map({
         }}
         className="w-screen"
       >
-        {event == "view" && (
+        {event != "survey" && (
           <div className="bg-white rounded-lg mx-3 py-1 px-3 mb-3 flex text-black cursor-pointer border border-gray-200 items-center">
             <div className="flex mr-2"><Search size={16} /></div>
             <div className="flex flex-auto">
@@ -202,7 +202,7 @@ export default function Map({
           </div>
         )}
 
-        <div className={"absolute right-3 " + (expandedBar ? "top-[125px]" : "")}>
+        <div className={"absolute right-3 " + (expandedBar ? "top-[120px]" : "")}>
           <div
             className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onShowSelectMap}

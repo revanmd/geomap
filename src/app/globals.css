@@ -101,10 +101,9 @@
   }
 }
 
-
 .message-position-survey {
   position: absolute !important;
-  bottom: 8em !important;
+  bottom: 5em !important;
   left: 0px !important;
   z-index: 999999 !important;
   width: 100% !important

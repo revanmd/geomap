@@ -21,6 +21,17 @@ export const markerService = {
     }
   },
 
+  // Get all markers
+  getSelfMarkers: async () => {
+    try {
+      const response = await api.get("/api/markers/_self");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to fetch markers" };
+    }
+  },
+
+
   // Get a single marker by ID
   getMarkerById: async (markerId) => {
     try {
@@ -48,6 +59,16 @@ export const markerService = {
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Failed to delete marker" };
+    }
+  },
+
+
+  summary: async () => {
+    try {
+      const response = await api.get(`/api/markers/_summary`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to get summary" };
     }
   },
 };
