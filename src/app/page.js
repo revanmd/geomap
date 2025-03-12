@@ -29,7 +29,7 @@ export default function Home() {
       const response = await authService.login(values.username, values.password);
       if (response){
         message.success("Berhasil login")
-        router.push("/collaborator/main")
+        router.push("/collaborator")
       }else{
         message.error("Username atau password salah")
       }
