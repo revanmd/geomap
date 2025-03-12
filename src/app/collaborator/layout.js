@@ -10,7 +10,7 @@ export default function Layout({ children }) {
 
     const handleConfirmBack = () => {
         setIsBack(false)
-        router.back()
+        router.push("/")
     }
 
     const handleCancelBack = () => {
@@ -21,15 +21,15 @@ export default function Layout({ children }) {
         const handleBackButton = (event) => {
             event.preventDefault();
             setIsBack(true);
-            window.history.pushState(null, "", window.location.href); // Prevent actual back navigation
         };
 
+        window.history.replaceState(null, "", window.location.href); // Ensure the current page is the initial state
         window.addEventListener("popstate", handleBackButton);
 
         return () => {
             window.removeEventListener("popstate", handleBackButton);
         };
-    }, [])
+    }, []);
 
     return (
         <main>
@@ -44,7 +44,7 @@ export default function Layout({ children }) {
             >
                 <div className="text-center text-base text-black font-semibold">Keluar</div>
                 <p className="text-xs text-gray p-3"> Apakah anda yakin untuk keluar dari platform survey ?</p>
-                <div className="flex justify-between space-x-5">
+                <div className="flex justify-between space-x-3 text-xs mt-2">
                     <button className="flex-1 border border-red-500 text-red-500 font-semibold p-2 rounded"
                         onClick={handleCancelBack}
                     >Tidak</button>

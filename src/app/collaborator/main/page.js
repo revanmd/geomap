@@ -1,17 +1,19 @@
 "use client"
 
 import Link from "next/link";
-import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X } from "lucide-react";
+import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X, Camera } from "lucide-react";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Drawer, message } from "antd";
+import { Drawer, message, Modal } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
 import { CapitalizeFirstLetter, ConvertIsoToIndonesianDate } from "@/utility/utils";
+import { useRouter } from "next/navigation";
+import { marker } from "leaflet";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -20,6 +22,8 @@ const MapComponent = dynamic(() => import("@/components/map"), {
 
 
 export default function Collaborator() {
+    const router = useRouter()
+
     ////////////////////////////////
     // CONTEXT
     const { showMessage } = useMessage()
@@ -56,6 +60,8 @@ export default function Collaborator() {
     //// DETAIL MARKER
     const [isDetailOpen, setIsDetailOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
+    const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+
     const [markerDetail, setMarkerDetail] = useState(null)
     const [uploadedImage, setUploadedImage] = useState("")
 
@@ -76,6 +82,7 @@ export default function Collaborator() {
             const marker = await markerService.getMarkerById(markerId)
             await fetchImage(marker?.data?.photo)
             setMarkerDetail(marker?.data)
+            setSurveyCommodity(marker?.data.commodity)
             setIsDetailOpen(true)
         } catch (error) {
         } finally {
@@ -84,6 +91,84 @@ export default function Collaborator() {
     }
 
     const onCloseDetail = () => {
+        setIsDetailOpen(false)
+    }
+
+    const onEditDetail = () => {
+        setCapturedImage("")
+        setIsDetailOpen(false)
+        setIsEditOpen(true)
+    }
+    const onDeleteDetail = () => {
+        setIsDeleteOpen(true)
+    }
+
+    const onCloseEdit = () => {
+        setIsEditOpen(false)
+        setIsDetailOpen(true)
+    }
+
+    const handleEditPhoto = () => {
+        setIsEditOpen(false)
+        setIsWebcamActive(true)
+    }
+
+    const handleFinishEdit = async () => {
+        showLoading("Mohon tunggu ...")
+        // handle send the request
+        try {
+            let filename = markerDetail.photo
+            if (capturedImage != "") {
+                filename = await uploadFile(capturedImage, `${surveyCommodity}.png`)
+            }
+            if (filename) {
+                const marker = {
+                    photo: filename,
+                    commodity: surveyCommodity,
+                    location: {
+                        lat: markerDetail?.location?.lat,
+                        lon: markerDetail?.location?.lon
+                    }
+                }
+
+                // Create marker
+                const response = await markerService.updateMarker(markerDetail?.id, marker);
+
+                // Flagging as success
+                mapFunctions.updateMarker(response?.data?.id, [markerDetail?.location?.lat, markerDetail?.location?.lon], surveyCommodity)
+                showMessage("Komoditas berhasil diubah", <ChecklistIcon />)
+            } else {
+                showMessage("Gagal mengupload foto", <CancleIcon />)
+            }
+            setIsEditOpen(false)
+
+
+        } catch (error) {
+            console.log(error)
+            showMessage("Gagal menambahkan komoditas", <CancleIcon />)
+        }
+        resetSurvey()
+        hideLoading()
+    }
+
+    const handleCancelDelete = () => {
+        setIsDeleteOpen(false)
+    }
+    const handleConfirmDelete = async () => {
+        showLoading("Mohon tunggu...")
+        setIsDeleteOpen(false)
+        try {
+            await markerService.deleteMarker(markerDetail?.id);
+            mapFunctions.removeMarker(markerDetail?.id)
+            showMessage("Berhasil menghapus komoditas", <ChecklistIcon />, event)
+        } catch (error) {
+            console.log(error)
+            showMessage("Gagal menghapus komoditas", <CancleIcon />, event)
+        }
+        hideLoading()
+
+
+        setIsEditOpen(false)
         setIsDetailOpen(false)
     }
 
@@ -120,17 +205,11 @@ export default function Collaborator() {
         showLoading("Mohon tunggu ...")
         // handle send the request
         try {
-            const username = "91010196"
-            const name = "Revan Muhammad Dafa"
-            const orgName = "Junior Digitalisasi Reformasi Subsidi"
-            const filename = await uploadFile(capturedImage, `${username}_${surveyCommodity}.png`)
+            const filename = await uploadFile(capturedImage, `${surveyCommodity}.png`)
             if (filename) {
-                // prepare marker
+                // Prepare marker
                 const markerLocation = mapFunctions.getMarkerAddLocation()
                 const marker = {
-                    username: username,
-                    name: name,
-                    org_name: orgName,
                     photo: filename,
                     commodity: surveyCommodity,
                     location: {
@@ -139,10 +218,11 @@ export default function Collaborator() {
                     }
                 }
 
-                await markerService.createMarker(marker);
+                // Create marker
+                const response = await markerService.createMarker(marker);
 
                 // Flagging as success
-                mapFunctions.appendMarker(surveyCommodity)
+                mapFunctions.appendMarker(surveyCommodity, response?.data?.id)
                 showMessage("Komoditas berhasil ditambah", <ChecklistIcon />)
             } else {
                 showMessage("Gagal mengupload foto", <CancleIcon />)
@@ -150,6 +230,7 @@ export default function Collaborator() {
 
 
         } catch (error) {
+            console.log(error)
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
         }
         setEvent("survey")
@@ -160,9 +241,7 @@ export default function Collaborator() {
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
 
-    const videoConstraints = {
-        facingMode: "environment"
-    };
+    const [isWebcamActive, setIsWebcamActive] = useState(false)
     const webcamRef = useRef(null)
     const [capturedImage, setCapturedImage] = useState("");
     const captureWebcam = useCallback(() => {
@@ -171,6 +250,19 @@ export default function Collaborator() {
             setCapturedImage(imageSrc);
         }
     }, [webcamRef]);
+    const videoConstraints = {
+        facingMode: "environment"
+    };
+
+    const handleWebcamCaptured = () => {
+        if (surveyStep == 2 && event == "survey") {
+            finishSurvey()
+        } else {
+            setUploadedImage(capturedImage)
+            setIsWebcamActive(false);
+            setIsEditOpen(true)
+        }
+    }
 
 
     ////////////////////////////////////////////////////////////////
@@ -253,7 +345,7 @@ export default function Collaborator() {
                     <div
                         style={{
                             position: 'absolute',
-                            top: 20,
+                            top: 10,
                             left: 0,
                             zIndex: 99993
                         }}
@@ -303,8 +395,8 @@ export default function Collaborator() {
                         }}
                         className="bg-white w-screen"
                     >
-                        <div className="flex justify-between px-5 pt-5 pb-2 items-center">
-                            <div className="flex font-semibold text-lg text-black">
+                        <div className="flex justify-between px-5 pt-2 items-center">
+                            <div className="flex font-semibold text-sm text-black">
                                 Tandai dengan komoditas
                             </div>
                             <div className="flex text-gray">
@@ -312,9 +404,9 @@ export default function Collaborator() {
                             </div>
                         </div>
 
-                        <div className="py-1 text-center w-full flex justify-around px-5">
+                        <div className="py-1 text-center w-full flex justify-around px-4">
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-3 
+                                className={`border rounded text-center mx-2 py-3 my-2 
                                     ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -327,7 +419,7 @@ export default function Collaborator() {
                                 </div>
                             </div>
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-3 
+                                className={`border rounded text-center mx-2 py-3 my-2 
                                 ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -340,7 +432,7 @@ export default function Collaborator() {
                                 </div>
                             </div>
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-3 
+                                className={`border rounded text-center mx-2 py-3 my-2 
                                 ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -353,7 +445,7 @@ export default function Collaborator() {
                                 </div>
                             </div>
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-3 
+                                className={`border rounded text-center mx-2 py-3 my-2 
                                     ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -368,7 +460,7 @@ export default function Collaborator() {
                         </div>
 
                         <div
-                            className={`mb-3 font-semibold text-white text-center text-sm p-3 mx-6 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
+                            className={`mb-3 font-semibold text-white text-center text-sm p-2 mx-6 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
                             disabled={surveyCommodity != "" ? false : true}
                             onClick={nextSurveiStep}
                         >
@@ -378,7 +470,7 @@ export default function Collaborator() {
                 )
             }
             {
-                (event == "survey" && surveyStep == 2) && (
+                ((event == "survey" && surveyStep == 2) || isWebcamActive) && (
                     <div className="w-screen h-[100dvh] bg-black absolute top-0"
                         style={{
                             zIndex: 99992
@@ -415,13 +507,13 @@ export default function Collaborator() {
                                     className="w-screen bg-white py-3"
                                 >
                                     <div
-                                        className={`text-sm font-semibold text-white text-center text-sm p-3 mx-6 rounded bg-blue cursor-pointer mb-3`}
-                                        onClick={finishSurvey}
+                                        className={`text-sm font-semibold text-white text-center text-sm p-2 mx-6 rounded bg-blue cursor-pointer mb-3`}
+                                        onClick={handleWebcamCaptured}
                                     >
                                         Simpan Foto
                                     </div>
                                     <div
-                                        className={`text-sm border border-gray-300  font-semibold text-center text-sm p-3 mx-6 rounded cursor-pointer`}
+                                        className={`text-sm border border-gray-300  font-semibold text-center text-sm p-2 mx-6 rounded cursor-pointer`}
                                         onClick={() => {
                                             setCapturedImage("")
                                         }}
@@ -446,7 +538,7 @@ export default function Collaborator() {
                                     className="w-screen bg-white"
                                 >
                                     <div
-                                        className={`text-sm mb-3 border border-gray-300 font-semibold text-white text-center text-sm p-3 my-3 mx-6 rounded bg-blue cursor-pointer`}
+                                        className={`text-sm mb-3 border border-gray-300 font-semibold text-white text-center text-sm p-2 my-3 mx-6 rounded bg-blue cursor-pointer`}
                                         disabled={surveyCommodity != "" ? false : true}
                                         onClick={captureWebcam}
                                     >
@@ -463,17 +555,17 @@ export default function Collaborator() {
                 open={isDetailOpen}
                 placement="bottom"
                 zIndex={999999}
-                height={460}
+                height={400}
                 className="drawer-body-modified rounded-xl"
                 closeIcon={false}
             >
-                <div className="p-3">
-                    <div className="flex justify-between items-center">
+                <div className="">
+                    <div className="flex justify-between items-center pt-3 px-4">
                         <div>
-                            <h1 className="text-xl font-semibold text-black">{CapitalizeFirstLetter(markerDetail?.commodity)}</h1>
-                            <h2 className="text-sm text-gray">Ditambahkan {ConvertIsoToIndonesianDate(markerDetail?.updated_at)}</h2>
+                            <h1 className="text-base font-semibold text-black">{CapitalizeFirstLetter(markerDetail?.commodity)}</h1>
+                            <h2 className="text-xs text-gray-500">Ditambahkan {ConvertIsoToIndonesianDate(markerDetail?.updated_at)}</h2>
                         </div>
-                        <h1 className="text-xl font-semibold text-black"
+                        <h1 className="text-lg font-semibold text-black"
                             onClick={onCloseDetail}
                         >
                             <X />
@@ -481,14 +573,20 @@ export default function Collaborator() {
                     </div>
 
 
-                    <div className="mt-4">
-                        <img src={uploadedImage} className="image-commodity rounded-lg"></img>
+                    <div className="mt-4 px-4">
+                        <img src={uploadedImage} className="image-commodity rounded"></img>
                     </div>
 
-                    <div className="fixed bottom-0 left-0 w-full bg-white p-4">
-                        <div className="flex space-x-5 text-sm">
-                            <button className="flex-1 border border-red-500 text-red-500 p-2 rounded-lg font-semibold">Hapus</button>
-                            <button className="flex-1 bg-blue text-white p-2 rounded-lg font-semibold">Ubah</button>
+                    <div className="fixed bottom-0 left-0 w-full bg-white p-5">
+                        <div className="flex space-x-3 text-sm">
+                            <button
+                                className="flex-1 border border-red-500 text-red-500 p-2 rounded font-semibold"
+                                onClick={onDeleteDetail}
+                            >Hapus</button>
+                            <button
+                                className="flex-1 bg-blue text-white p-2 rounded font-semibold"
+                                onClick={onEditDetail}
+                            >Ubah</button>
                         </div>
                     </div>
 
@@ -496,25 +594,32 @@ export default function Collaborator() {
             </Drawer>
 
             <Drawer
-                open={false}
+                open={isEditOpen}
                 placement="bottom"
                 zIndex={999999}
-                height={500}
+                height={490}
                 className="drawer-body-modified rounded-xl"
                 closeIcon={false}
             >
-                <div className="p-3">
-                    <div className="flex justify-between">
-                        <h1 className="text-xl font-semibold text-black">Padi</h1>
-                        <h1 className="text-xl font-semibold text-black">
+                <div className="">
+                    <div className="flex justify-between items-center px-4 pt-3">
+                        <h1 className="text-base font-semibold text-black">Ubah Penanda</h1>
+                        <h1 className="text-xs font-semibold text-black"
+                            onClick={onCloseEdit}
+                        >
                             <X />
                         </h1>
                     </div>
 
-                    <h2 className="text-sm mt-3">Tandai dengan komoditas</h2>
-                    <div className="text-center w-full flex justify-around">
+                    <h2 className="text-sm mt-3 px-4">Tandai dengan komoditas</h2>
+                    <div className="text-center w-full flex justify-around px-3">
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                            className={`border rounded text-center mx-2 py-3 my-2 
+                                ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
+                                }`}
+                            onClick={() => {
+                                clickedCommodity("padi")
+                            }}
                         >
                             <img src="/padi.png" className="icon-commodity ml-auto mr-auto"></img>
                             <div className="font-semibold text-xs mt-1.5">
@@ -522,7 +627,12 @@ export default function Collaborator() {
                             </div>
                         </div>
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                            className={`border rounded text-center mx-2 py-3 my-2 
+                                ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
+                                }`}
+                            onClick={() => {
+                                clickedCommodity("jagung")
+                            }}
                         >
                             <img src="/jagung.png" className="icon-commodity ml-auto mr-auto"></img>
                             <div className="font-semibold text-xs mt-1.5">
@@ -530,7 +640,12 @@ export default function Collaborator() {
                             </div>
                         </div>
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                            className={`border rounded text-center mx-2 py-3 my-2 
+                                ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
+                                }`}
+                            onClick={() => {
+                                clickedCommodity("tebu")
+                            }}
                         >
                             <img src="/tebu.png" className="icon-commodity ml-auto mr-auto"></img>
                             <div className="font-semibold text-xs mt-1.5">
@@ -538,7 +653,12 @@ export default function Collaborator() {
                             </div>
                         </div>
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-3 border-gray-300`}
+                            className={`border rounded text-center mx-2 py-3 my-2 
+                                ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
+                                }`}
+                            onClick={() => {
+                                clickedCommodity("other")
+                            }}
                         >
                             <img src="/other.png" className="icon-commodity ml-auto mr-auto"></img>
                             <div className="font-semibold text-xs mt-1.5">
@@ -547,16 +667,58 @@ export default function Collaborator() {
                         </div>
                     </div>
 
-                    <h2 className="text-sm">Foto Komoditas</h2>
-                    <img src="/commodity-image.png" className="image-commodity-sm rounded-lg mt-1"></img>
+                    <h2 className="text-sm px-4">Foto komoditas</h2>
+                    <div className="px-4">
+                        <div className="image-commodity-container rounded"
+                            onClick={handleEditPhoto}
+                        >
+                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                <div className="text-white">
+                                    <Camera className="text-sm block w-full" />
+                                    <div className="mt-1 text-xs font-semibold">Ganti Foto</div>
+                                </div>
+                            </div>
+                            <img src={uploadedImage} className="image-commodity-sm rounded mt-1"></img>
+                        </div>
+                    </div>
 
 
-                    <div className="fixed bottom-0 left-0 w-full bg-white p-4">
-                        <button className="bg-blue text-white p-2 rounded-lg font-semibold w-full text-base">Simpan Perubahan</button>
+                    <div className="fixed bottom-0 left-0 w-full bg-white p-5">
+                        <button className="bg-blue text-white p-2 rounded font-semibold w-full text-sm"
+                            onClick={handleFinishEdit}
+                        >Simpan Perubahan</button>
                     </div>
 
                 </div>
             </Drawer>
+
+            <Modal
+                open={isDeleteOpen}
+                zIndex={9999999}
+                footer={false}
+                closable={false}
+                closeIcon={false}
+                className="modal-margin"
+                centered
+            >
+                <svg className="ml-auto mr-auto" width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="48" height="48" rx="24" fill="#FEE4E2" />
+                    <rect x="4" y="4" width="48" height="48" rx="24" stroke="#FEF3F2" stroke-width="8" />
+                    <path d="M28 17.875C25.9975 17.875 24.0399 18.4688 22.3749 19.5814C20.7098 20.6939 19.4121 22.2752 18.6457 24.1253C17.8794 25.9754 17.6789 28.0112 18.0696 29.9753C18.4602 31.9393 19.4245 33.7435 20.8405 35.1595C22.2566 36.5755 24.0607 37.5398 26.0247 37.9305C27.9888 38.3211 30.0246 38.1206 31.8747 37.3543C33.7248 36.5879 35.3061 35.2902 36.4186 33.6251C37.5312 31.9601 38.125 30.0025 38.125 28C38.122 25.3156 37.0543 22.742 35.1562 20.8438C33.258 18.9457 30.6844 17.878 28 17.875ZM28 35.875C26.4425 35.875 24.9199 35.4131 23.6249 34.5478C22.3299 33.6825 21.3205 32.4526 20.7245 31.0136C20.1284 29.5747 19.9725 27.9913 20.2763 26.4637C20.5802 24.9361 21.3302 23.5329 22.4315 22.4315C23.5329 21.3302 24.9361 20.5802 26.4637 20.2763C27.9913 19.9725 29.5747 20.1284 31.0136 20.7244C32.4526 21.3205 33.6825 22.3298 34.5478 23.6249C35.4131 24.9199 35.875 26.4425 35.875 28C35.8728 30.0879 35.0424 32.0896 33.566 33.566C32.0896 35.0424 30.0879 35.8728 28 35.875ZM26.875 28.375V23.5C26.875 23.2016 26.9935 22.9155 27.2045 22.7045C27.4155 22.4935 27.7016 22.375 28 22.375C28.2984 22.375 28.5845 22.4935 28.7955 22.7045C29.0065 22.9155 29.125 23.2016 29.125 23.5V28.375C29.125 28.6734 29.0065 28.9595 28.7955 29.1705C28.5845 29.3815 28.2984 29.5 28 29.5C27.7016 29.5 27.4155 29.3815 27.2045 29.1705C26.9935 28.9595 26.875 28.6734 26.875 28.375ZM29.5 32.125C29.5 32.4217 29.412 32.7117 29.2472 32.9584C29.0824 33.205 28.8481 33.3973 28.574 33.5108C28.2999 33.6244 27.9983 33.6541 27.7074 33.5962C27.4164 33.5383 27.1491 33.3954 26.9393 33.1857C26.7296 32.9759 26.5867 32.7086 26.5288 32.4176C26.4709 32.1267 26.5007 31.8251 26.6142 31.551C26.7277 31.2769 26.92 31.0426 27.1666 30.8778C27.4133 30.713 27.7033 30.625 28 30.625C28.3978 30.625 28.7794 30.783 29.0607 31.0643C29.342 31.3456 29.5 31.7272 29.5 32.125Z" fill="#D63024" />
+                </svg>
+
+                <div className="text-center text-lg text-black font-semibold mt-2">Konfirmasi Hapus Penanda</div>
+                <p className="text-sm text-gray px-2 py-2 text-center text-gray-500"> Apakah Anda yakin ingin menghapus penanda ini? Penanda yang sudah dihapus tidak bisa dikembalikan.</p>
+                <div className="flex justify-between space-x-3 mt-2">
+                    <button className="flex-1 border border-gray-300  text-base font-semibold p-2 rounded"
+                        onClick={handleCancelDelete}
+                    >Tidak</button>
+                    <button className="flex-1 bg-red-600 text-white  text-base font-semibold p-2 rounded"
+                        onClick={handleConfirmDelete}
+                    >Ya, Hapus</button>
+                </div>
+
+            </Modal>
 
 
         </main>

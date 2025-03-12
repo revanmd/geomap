@@ -196,15 +196,11 @@ export default function useLeafletMap({
   const initializeMarkers = useCallback((initialMarkers) => {
     if (!markerLayerRef.current || !mapInstanceRef.current) return;
 
-    // Clear existing markers
     markerLayerRef.current.clearLayers();
-    setMarkerData([]); // Reset state
+    setMarkerData([]);
 
-    const newMarkers = initialMarkers.map((markerInfo) => {
-      console.log(markerInfo)
-
-      const { id, location, commodity } = markerInfo;
-      const { lat, lon } = location
+    const newMarkers = initialMarkers.map(({ id, location, commodity }) => {
+      const { lat, lon } = location;
       let iconOptions;
       switch (commodity) {
         case "padi":
@@ -220,16 +216,8 @@ export default function useLeafletMap({
           iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
       }
 
-      const marker = L.marker([lat, lon], {
-        icon: L.icon(iconOptions),
-      }).addTo(markerLayerRef.current);
-
-      // Attach click event
-      marker.on("click", () => {
-        if (onClickMarker) {
-          onClickMarker({ id, lat, lon, commodity });
-        }
-      });
+      const marker = L.marker([lat, lon], { icon: L.icon(iconOptions) }).addTo(markerLayerRef.current);
+      marker.on("click", () => onClickMarker && onClickMarker({ id }));
 
       return { id, marker, lat, lon, commodity };
     });
@@ -238,7 +226,7 @@ export default function useLeafletMap({
   }, []);
 
   // Function to append a new marker while keeping data consistent
-  const appendMarker = useCallback((type) => {
+  const appendMarker = useCallback((type, id) => {
     if (!markerLayerRef.current || !markerAddRef.current) return;
 
     const currentMarkerAddPosition = markerAddRef.current.getLatLng();
@@ -263,27 +251,61 @@ export default function useLeafletMap({
       icon: L.icon(iconOptions),
     }).addTo(markerLayerRef.current);
 
+    newMarker.on("click", () => {
+      if (onClickMarker) {
+        onClickMarker({ id });
+      }
+    });
+
     setMarkerData((prevMarkers) => [
       ...prevMarkers,
-      { marker: newMarker, lat, lng, type },
+      { id, marker: newMarker, lat, lng, type },
     ]);
 
     if (markerAddRef.current) {
       mapInstanceRef.current.removeLayer(markerAddRef.current);
     }
-
-    return newMarker;
   }, []);
 
-  // Function to remove a specific marker
-  const removeMarker = useCallback((marker) => {
-    if (!markerLayerRef.current || !marker) return;
+  const removeMarker = useCallback((id) => {
+    if (!markerLayerRef.current) return;
 
-    markerLayerRef.current.removeLayer(marker);
+    setMarkerData((prevMarkers) => {
+      const markerIndex = prevMarkers.findIndex((m) => m.id === id);
+      if (markerIndex === -1) return prevMarkers;
 
-    setMarkerData((prevMarkers) =>
-      prevMarkers.filter((m) => m.marker !== marker)
-    );
+      const markerToRemove = prevMarkers[markerIndex].marker;
+      markerLayerRef.current.removeLayer(markerToRemove);
+
+      return prevMarkers.filter((m) => m.id !== id);
+    });
+  }, []);
+
+  const updateMarker = useCallback((id, newLocation, newType) => {
+    setMarkerData((prevMarkers) => {
+      return prevMarkers.map((markerObj) => {
+        if (markerObj.id === id) {
+          markerObj.marker.setLatLng(newLocation);
+          let iconOptions;
+          switch (newType) {
+            case "padi":
+              iconOptions = { iconUrl: "/marker-padi.png", iconSize: [32, 38] };
+              break;
+            case "jagung":
+              iconOptions = { iconUrl: "/marker-jagung.png", iconSize: [32, 38] };
+              break;
+            case "tebu":
+              iconOptions = { iconUrl: "/marker-tebu.png", iconSize: [32, 38] };
+              break;
+            default:
+              iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
+          }
+          markerObj.marker.setIcon(L.icon(iconOptions));
+          return { ...markerObj, lat: newLocation.lat, lon: newLocation.lng, type: newType };
+        }
+        return markerObj;
+      });
+    });
   }, []);
 
   return {
@@ -297,6 +319,7 @@ export default function useLeafletMap({
     setBaseMap,
     appendMarker,
     removeMarker,
+    updateMarker,
     initializeMarkers,
     markerData,
   };

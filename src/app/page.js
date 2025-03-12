@@ -1,11 +1,14 @@
 "use client"
 
+import { useLoading } from "@/context/loadingContext";
 import { authService } from "@/services/authService";
 import { Col, Form, Image, Input, message, Row } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
   
 export default function Home() {
+  const { showLoading, hideLoading } = useLoading();
+
   const router = useRouter()
   const [FormLogin] = Form.useForm()
   const [isFilled, setIsFilled] = useState(false)
@@ -20,6 +23,7 @@ export default function Home() {
   }
 
   const handleFinish = async () => {
+    showLoading("Sedang menghubungkan...")
     const values = FormLogin.getFieldsValue()
     try {
       const response = await authService.login(values.username, values.password);
@@ -32,7 +36,10 @@ export default function Home() {
       
     } catch (err) {
       message.error("Terdapat kesalahan pada server")
+    } finally{
+      hideLoading()
     }
+    
   }
 
 

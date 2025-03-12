@@ -12,7 +12,7 @@ export const authService = {
 
       // Store token in localStorage or cookies
       if (typeof window !== "undefined") {
-        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("token", response.data?.data?.token);
       }
 
       return response.data;

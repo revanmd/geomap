@@ -38,6 +38,7 @@ export default function Map({
     setBaseMap,
     appendMarker,
     removeMarker,
+    updateMarker,
     initializeMarkers,
   } = useLeafletMap({
     event: event,
@@ -79,6 +80,7 @@ export default function Map({
       onMapReady({
         appendMarker,
         removeMarker,
+        updateMarker,
         getGpsLocation,
         getMarkerAddLocation,
         initializeMarkers,
@@ -139,7 +141,7 @@ export default function Map({
     const lat = parseFloat(location.lat);
     const lon = parseFloat(location.lon);
 
-    setCenter([lat, lon]); // Move map to selected location
+    setCenter([lat, lon], 18); // Move map to selected location
     setSearchQuery(location.display_name); // Update input field with selected location
     setSearchSuggestions([]); // Clear suggestions
     setDropdownSearchVisible(false);
@@ -153,7 +155,7 @@ export default function Map({
       <div
         style={{
           position: 'absolute',
-          top: '20px',
+          top: '10px',
           zIndex: 9999,
         }}
         className="w-screen"
@@ -165,7 +167,7 @@ export default function Map({
               <input
                 type="text"
                 style={{ width: '100%', height: '35px' }}
-                className="text-sm"
+                className="text-sm focus:border-transparent focus:ring-0 focus:outline-none"
                 placeholder="Cari Lokasi"
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -190,7 +192,7 @@ export default function Map({
               {searchSuggestions.map((location) => (
                 <div
                   key={location.place_id}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-xs"
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                   onClick={() => handleSelectLocation(location)}
                 >
                   {location.display_name}
@@ -219,7 +221,7 @@ export default function Map({
       </div>
 
       <Drawer
-        title="Ubah Jenis Peta"
+        title="Jenis Peta"
         placement="bottom"
         closeIcon={false}
         onClose={onCloseSelectMap}
@@ -271,10 +273,10 @@ export default function Map({
         closeIcon={false}
         className="modal-margin"
       >
-        <h2 className="text-base text-black text-center font-semibold">
-          Izinkan Akses Lokasi
+        <h2 className="text-lg text-black text-center font-semibold">
+            Izinkan Akses Lokasi
         </h2>
-        <p className="text-xs text-center mt-3 mb-3 leading-5">
+        <p className="text-sm text-center text-gray-500 mt-3 mb-3 leading-5">
           Kami memerlukan akses lokasi Anda untuk mendapatkan lokasi yang akurat untuk mendukung layanan dan fungsi aplikasi
         </p>
 
