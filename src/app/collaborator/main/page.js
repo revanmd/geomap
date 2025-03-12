@@ -13,7 +13,6 @@ import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
 import { CapitalizeFirstLetter, ConvertIsoToIndonesianDate } from "@/utility/utils";
 import { useRouter } from "next/navigation";
-import { marker } from "leaflet";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {

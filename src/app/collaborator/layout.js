@@ -23,12 +23,14 @@ export default function Layout({ children }) {
             setIsBack(true);
         };
 
-        window.history.replaceState(null, "", window.location.href); // Ensure the current page is the initial state
-        window.addEventListener("popstate", handleBackButton);
+        if (typeof window !== "undefined") {
+            window.history.replaceState(null, "", window.location.href); // Ensure the current page is the initial state
+            window.addEventListener("popstate", handleBackButton);
 
-        return () => {
-            window.removeEventListener("popstate", handleBackButton);
-        };
+            return () => {
+                window.removeEventListener("popstate", handleBackButton);
+            };
+        }
     }, []);
 
     return (
