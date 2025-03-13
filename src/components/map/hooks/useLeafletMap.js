@@ -197,41 +197,43 @@ export default function useLeafletMap({
 
   const setBaseMap = useCallback((newBaseMap) => {
     if (!mapInstanceRef.current) return;
-  
+
     // Remove existing base map (tile layer) but keep data layers
     if (tileLayerRef.current) {
       mapInstanceRef.current.removeLayer(tileLayerRef.current);
     }
-  
+
     // Add new base map layer
     if (baseMapOptions[newBaseMap]) {
       tileLayerRef.current = L.tileLayer(baseMapOptions[newBaseMap]).addTo(mapInstanceRef.current);
     }
-  
+
     setCurrentBaseMap(newBaseMap);
-  
+
     // ✅ Ensure the data map remains by reapplying it after the base map changes
     if (dataLayerRef.current) {
       dataLayerRef.current.addTo(mapInstanceRef.current);
     }
   }, []);
-  
+
   const setDataMap = useCallback((newDataMap) => {
     if (!mapInstanceRef.current) return;
-  
+
     // Remove existing data layer
     if (dataLayerRef.current) {
       mapInstanceRef.current.removeLayer(dataLayerRef.current);
       dataLayerRef.current = null;
     }
-  
+
     // Add new data layer if not "none"
     if (dataMapOptions[newDataMap] && newDataMap !== "none") {
       dataLayerRef.current = L.tileLayer(dataMapOptions[newDataMap], {
-        opacity: 0.7, // Slight transparency
+        opacity: 0.7,
+        maxZoom: 18,
+        maxNativeZoom: 17
       }).addTo(mapInstanceRef.current);
     }
-  
+
     setCurrentDataMap(newDataMap);
   }, []);
 
