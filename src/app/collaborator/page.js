@@ -51,6 +51,7 @@ export default function Collaborator() {
     }
 
     const clickedAddMarker = () => {
+        mapFunctions.onGeolocationUpdate()
         setEvent('survey')
     }
 

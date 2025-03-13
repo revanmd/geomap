@@ -31,16 +31,25 @@ export default function useLeafletMap({
   const gpsMarkerRef = useRef(null);
   const markerAddRef = useRef(null)
   const gpsCircleRef = useRef(null);
+
   const tileLayerRef = useRef(null);
+  const dataLayerRef = useRef(null);
 
   const [markerData, setMarkerData] = useState([]); // State to track all markers
 
   const [currentBaseMap, setCurrentBaseMap] = useState("road");
+  const [currentDataMap, setCurrentDataMap] = useState("none");
 
   const baseMapOptions = {
     road: "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
     hybrid: "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
     terrain: "https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
+  };
+
+  const dataMapOptions = {
+    none: null, // No base map
+    dds: "https://tile.digitalisasi-pi.com/data/jatim_ds/{z}/{x}/{y}.png",
+    ifri: "https://tile.digitalisasi-pi.com/data/jatim_ifri/{z}/{x}/{y}.png",
   };
 
   const _initialize = (container, instance) => {
@@ -187,10 +196,45 @@ export default function useLeafletMap({
   }, []);
 
   const setBaseMap = useCallback((newBaseMap) => {
+    if (!mapInstanceRef.current) return;
+  
+    // Remove existing base map (tile layer) but keep data layers
+    if (tileLayerRef.current) {
+      mapInstanceRef.current.removeLayer(tileLayerRef.current);
+    }
+  
+    // Add new base map layer
     if (baseMapOptions[newBaseMap]) {
-      setCurrentBaseMap(newBaseMap);
+      tileLayerRef.current = L.tileLayer(baseMapOptions[newBaseMap]).addTo(mapInstanceRef.current);
+    }
+  
+    setCurrentBaseMap(newBaseMap);
+  
+    // ✅ Ensure the data map remains by reapplying it after the base map changes
+    if (dataLayerRef.current) {
+      dataLayerRef.current.addTo(mapInstanceRef.current);
     }
   }, []);
+  
+  const setDataMap = useCallback((newDataMap) => {
+    if (!mapInstanceRef.current) return;
+  
+    // Remove existing data layer
+    if (dataLayerRef.current) {
+      mapInstanceRef.current.removeLayer(dataLayerRef.current);
+      dataLayerRef.current = null;
+    }
+  
+    // Add new data layer if not "none"
+    if (dataMapOptions[newDataMap] && newDataMap !== "none") {
+      dataLayerRef.current = L.tileLayer(dataMapOptions[newDataMap], {
+        opacity: 0.7, // Slight transparency
+      }).addTo(mapInstanceRef.current);
+    }
+  
+    setCurrentDataMap(newDataMap);
+  }, []);
+
 
   // Function to initialize markers from an external data source
   const initializeMarkers = useCallback((initialMarkers) => {
@@ -309,6 +353,12 @@ export default function useLeafletMap({
     });
   }, []);
 
+  useEffect(() => {
+    if (mapInstanceRef.current && currentDataMap !== "none") {
+      setDataMap(currentDataMap);
+    }
+  }, [currentBaseMap]); // ✅ Whenever the base map changes, re-add the data layer
+
   return {
     mapContainerRef,
     setCenter,
@@ -318,10 +368,13 @@ export default function useLeafletMap({
     getGpsLocation,
     getMarkerAddLocation,
     setBaseMap,
+    setDataMap,
     appendMarker,
     removeMarker,
     updateMarker,
     initializeMarkers,
     markerData,
+    currentBaseMap,
+    currentDataMap,
   };
 }

@@ -27,6 +27,7 @@ export default function Map({
   const [zoom, setZoom] = useState(11)
   const [isActiveGPS, setIsActiveGPS] = useState(!gps)
 
+
   const {
     mapContainerRef,
     setCenter,
@@ -36,6 +37,9 @@ export default function Map({
     getGpsLocation,
     getMarkerAddLocation,
     setBaseMap,
+    setDataMap,
+    currentBaseMap,
+    currentDataMap,
     appendMarker,
     removeMarker,
     updateMarker,
@@ -85,6 +89,7 @@ export default function Map({
         getGpsLocation,
         getMarkerAddLocation,
         initializeMarkers,
+        onGeolocationUpdate,
       });
     }
   }, [])
@@ -174,13 +179,13 @@ export default function Map({
                   setSearchQuery(e.target.value);
                   debouncedFetchSearchSuggestions(e.target.value);
                 }}
-                onFocus={()=>{
+                onFocus={() => {
                   setDropdownSearchVisible(true)
                 }}
                 onBlur={() => {
-                  setTimeout(()=>{
+                  setTimeout(() => {
                     setDropdownSearchVisible(false)
-                  },500)
+                  }, 500)
                 }}
               />
             </div>
@@ -222,22 +227,31 @@ export default function Map({
       </div>
 
       <Drawer
-        title="Jenis Peta"
         placement="bottom"
         closeIcon={false}
         onClose={onCloseSelectMap}
         open={isSelectMapOpen}
         zIndex={99991}
-        height={180}
+        height={300}
         className="drawer-body-modified"
       >
+        <div className="font-semibold text-black px-5 py-3 text-base">
+          Atur Peta
+        </div>
+        <div className="text-gray-500 text-xs px-5 font-medium">
+          Jenis Peta
+        </div>
         <div className="py-3 text-center w-full flex justify-around px-5">
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
               setBaseMap("road")
             }}
           >
-            <img src="/base-road.png" className="icon-basemap ml-auto mr-auto"></img>
+            <img src="/base-road.png"
+              className={`icon-basemap ml-auto mr-auto 
+                ${currentBaseMap == "road" ? "border border-blue" : ""
+              }`}
+            ></img>
             <div className="font-semibold text-xs mt-1.5">
               Default
             </div>
@@ -247,7 +261,11 @@ export default function Map({
               setBaseMap("hybrid")
             }}
           >
-            <img src="/base-sattelite.png" className="icon-basemap ml-auto mr-auto"></img>
+            <img src="/base-sattelite.png" 
+              className={`icon-basemap ml-auto mr-auto 
+                ${currentBaseMap == "hybrid" ? "border border-blue" : ""
+              }`}
+            ></img>
             <div className="font-semibold text-xs mt-1.5">
               Sattelite
             </div>
@@ -257,9 +275,62 @@ export default function Map({
               setBaseMap("terrain")
             }}
           >
-            <img src="/base-terrain.png" className="icon-basemap ml-auto mr-auto"></img>
+            <img src="/base-terrain.png"
+              className={`icon-basemap ml-auto mr-auto 
+                ${currentBaseMap == "terrain" ? "border border-blue" : ""
+              }`}
+            ></img>
             <div className="font-semibold text-xs mt-1.5">
               Terrain
+            </div>
+          </div>
+        </div>
+
+        <div className="text-gray-500 text-xs px-5 font-medium">
+          Model Data
+        </div>
+        <div className="py-3 text-center w-full flex justify-around px-5">
+          <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
+            onClick={() => {
+              setDataMap("none")
+            }}
+          >
+            <img src="/model-null.png" 
+              className={`icon-basemap ml-auto mr-auto 
+                ${currentDataMap == "none" ? "border border-blue" : ""
+              }`}
+            ></img>
+            <div className="font-semibold text-xs mt-1.5">
+              Kosong
+            </div>
+          </div>
+          <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
+            onClick={() => {
+              setDataMap("dds")
+            }}
+          >
+            <img src="/model-icon.png"
+              className={`icon-basemap ml-auto mr-auto 
+                ${currentDataMap == "dds" ? "border border-blue" : ""
+              }`}
+            ></img>
+            <div className="font-semibold text-xs mt-1.5">
+              Model DDS
+            </div>
+          </div>
+
+          <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
+            onClick={() => {
+              setDataMap("ifri")
+            }}
+          >
+            <img src="/model-icon.png" 
+              className={`icon-basemap ml-auto mr-auto 
+                ${currentDataMap == "ifri" ? "border border-blue" : ""
+              }`}
+            ></img>
+            <div className="font-semibold text-xs mt-1.5">
+              Model IFRI
             </div>
           </div>
         </div>
@@ -275,7 +346,7 @@ export default function Map({
         className="modal-margin"
       >
         <h2 className="text-lg text-black text-center font-semibold">
-            Izinkan Akses Lokasi
+          Izinkan Akses Lokasi
         </h2>
         <p className="text-sm text-center text-gray-500 mt-3 mb-3 leading-5">
           Kami memerlukan akses lokasi Anda untuk mendapatkan lokasi yang akurat untuk mendukung layanan dan fungsi aplikasi
