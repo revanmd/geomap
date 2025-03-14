@@ -380,11 +380,12 @@ export default function Collaborator() {
 
     useEffect(() => {
         const navigation = searchParams.get("navigation");
-        if (navigation === "view") {
-            setEvent("view");
-        } else {
-            setEvent("summary");
+        if (navigation == "summary") {
             fetchSelfMarker();
+            setEvent("summary");
+        } else {
+            setEvent("view");
+            
         }
     }, [searchParams]);
 
