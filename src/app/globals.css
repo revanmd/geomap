@@ -13,6 +13,9 @@
 .text-gray-500{
   color : #757575 !important;
 }
+.text-gray-600{
+  color : #424242 !important;
+}
 
 .text-blue{
   color: #0080FB !important;
@@ -121,4 +124,26 @@
   position: absolute;
   top: 0;
   left: 0
+}
+
+
+.mt-1{
+  margin-top:3px !important;
+}
+
+
+.bg-green-800{
+  background-color: #226C21 !important
+}
+
+.bg-yellow-700{
+  background-color: #C1B53F !important
+}
+
+.bg-magenta-800{
+  background-color: #43878E !important
+}
+
+.bg-gray-800{
+  background-color: #EDEFEE !important
 }

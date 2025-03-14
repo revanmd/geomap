@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LoadingOutlined } from '@ant-design/icons';
 import useLeafletMap from "./hooks/useLeafletMap";
-import { Compass, Crosshair, Layers, Search } from "lucide-react";
+import { Compass, Crosshair, Info, Layers, Search, X } from "lucide-react";
 import { Drawer, Spin, Modal } from "antd";
 import { motion } from "framer-motion";
 import { useLoading } from "@/context/loadingContext";
@@ -15,7 +15,6 @@ export default function Map({
   event,
   screen,
   gps = true,
-  expandedBar = false,
   callbackClickMarker,
   callbackCancelMarker,
   callbackPressMap,
@@ -139,7 +138,7 @@ export default function Map({
   }
 
   const debouncedFetchSearchSuggestions = useCallback(
-    debounce(fetchSearchSuggestions, 500), // Adjust the debounce delay (500ms)
+    debounce(fetchSearchSuggestions, 300), // Adjust the debounce delay (500ms)
     []
   );
 
@@ -153,6 +152,24 @@ export default function Map({
     setDropdownSearchVisible(false);
   };
 
+  ////////////////////////////////////////////////////////////////
+  //// MAP INFORMATION
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [transparencyLevel, setTransparencyLevel] = useState(50);
+  const transparencyOptions = [0, 25, 50, 75, 100];
+
+
+  const onInformationOpen = () => {
+    setIsLegendOpen(true)
+  }
+  const onCloseInformation = () => {
+    setIsLegendOpen(false)
+  }
+
+  useEffect(()=>{
+    setDataMap(currentDataMap, transparencyLevel / 100)
+  },[transparencyLevel])
+
   return (
     <div>
 
@@ -162,7 +179,7 @@ export default function Map({
         style={{
           position: 'absolute',
           top: '10px',
-          zIndex: 9999,
+          zIndex: 9991,
         }}
         className="w-screen"
       >
@@ -192,8 +209,8 @@ export default function Map({
           </div>
         )}
 
-        {event == "view" && isDropdownSearchVisible && searchSuggestions.length > 0 && (
-          <div className="mx-3">
+        {event != "survey" && isDropdownSearchVisible && searchSuggestions.length > 0 && (
+          <div className="px-3 absolute w-screen" style={{ zIndex: 9991 }}>
             <div className="bg-white border border-gray-200 rounded-lg shadow-md w-full max-h-60 overflow-y-auto ">
               {searchSuggestions.map((location) => (
                 <div
@@ -208,7 +225,7 @@ export default function Map({
           </div>
         )}
 
-        <div className={"absolute right-3 " + (expandedBar ? "top-[120px]" : "")}>
+        <div className={"absolute right-3 " + (event == "summary" ? "top-[120px]" : "")} style={{ zIndex: -1 }}>
           <div
             className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onShowSelectMap}
@@ -223,6 +240,12 @@ export default function Map({
             <Crosshair size={22} />
           </div>
           <br></br>
+          <div
+            className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
+            onClick={onInformationOpen}
+          >
+            <Info  size={22} />
+          </div>
         </div>
       </div>
 
@@ -245,12 +268,13 @@ export default function Map({
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
               setBaseMap("road")
+              setIsSelectMapOpen(false)
             }}
           >
             <img src="/base-road.png"
               className={`icon-basemap ml-auto mr-auto 
                 ${currentBaseMap == "road" ? "border border-blue" : ""
-              }`}
+                }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Default
@@ -259,12 +283,13 @@ export default function Map({
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
               setBaseMap("hybrid")
+              setIsSelectMapOpen(false)
             }}
           >
-            <img src="/base-sattelite.png" 
+            <img src="/base-sattelite.png"
               className={`icon-basemap ml-auto mr-auto 
                 ${currentBaseMap == "hybrid" ? "border border-blue" : ""
-              }`}
+                }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Sattelite
@@ -273,12 +298,13 @@ export default function Map({
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
               setBaseMap("terrain")
+              setIsSelectMapOpen(false)
             }}
           >
             <img src="/base-terrain.png"
               className={`icon-basemap ml-auto mr-auto 
                 ${currentBaseMap == "terrain" ? "border border-blue" : ""
-              }`}
+                }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Terrain
@@ -292,13 +318,14 @@ export default function Map({
         <div className="py-3 text-center w-full flex justify-around px-5">
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
-              setDataMap("none")
+              setDataMap("none", transparencyLevel/100)
+              setIsSelectMapOpen(false)
             }}
           >
-            <img src="/model-null.png" 
+            <img src="/model-null.png"
               className={`icon-basemap ml-auto mr-auto 
                 ${currentDataMap == "none" ? "border border-blue" : ""
-              }`}
+                }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Kosong
@@ -306,13 +333,14 @@ export default function Map({
           </div>
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
-              setDataMap("dds")
+              setDataMap("dds", transparencyLevel/100)
+              setIsSelectMapOpen(false)
             }}
           >
             <img src="/model-icon.png"
               className={`icon-basemap ml-auto mr-auto 
                 ${currentDataMap == "dds" ? "border border-blue" : ""
-              }`}
+                }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Model DDS
@@ -321,13 +349,14 @@ export default function Map({
 
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
-              setDataMap("ifri")
+              setDataMap("ifri", transparencyLevel/100)
+              setIsSelectMapOpen(false)
             }}
           >
-            <img src="/model-icon.png" 
+            <img src="/model-icon.png"
               className={`icon-basemap ml-auto mr-auto 
                 ${currentDataMap == "ifri" ? "border border-blue" : ""
-              }`}
+                }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Model IFRI
@@ -359,6 +388,90 @@ export default function Map({
           Ya, Izinkan
         </button>
       </Modal>
+
+      <Drawer
+        closeIcon={false}
+        open={isLegendOpen}
+        zIndex={9999}
+        placement="bottom"
+        className="drawer-body-modified rounded-xl"
+        height={350}
+        onClose={onCloseInformation}
+      >
+        <div className="flex justify-between items-center pt-3 px-4">
+          <div>
+            <h1 className="text-base font-semibold text-black">Informasi Peta</h1>
+          </div>
+          <h1 className="text-lg font-semibold text-black"
+            onClick={onCloseInformation}
+          >
+            <X />
+          </h1>
+        </div>
+
+        {isLegendOpen && (
+          <div className="px-4 mt-4">
+            <div className="mb-4">
+              <p className="text-xs text-gray-500 mb-2 font-medium">Tingkat Transparansi Peta</p>
+              <div className="flex items-center justify-between gap-2">
+                {transparencyOptions.map((level) => (
+                  <button
+                    key={level}
+                    onClick={() => {setTransparencyLevel(level); setIsLegendOpen(false)}}
+                    className={`px-3 py-1.5 text-xs font-medium rounded ${transparencyLevel === level ? 'bg-blue text-white' : 'border border-gray-300 text-gray'
+                      }`}
+                  >
+                    {level}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs text-gray-500 mb-3 font-medium">Legend</h4>
+              <div className="grid grid-cols-2 gap-y-1">
+                <div className="flex items-center gap-2">
+                  <img src="/icon-user.png" className="w-6 h-7" />
+                  <span className="text-sm">Penanda lain</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 bg-green-800 rounded"></span>
+                  <span className="text-sm">Padi</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src="/marker-padi.png" className="w-6 h-7" />
+                  <span className="text-sm">Padi</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 bg-yellow-700 rounded"></span>
+                  <span className="text-sm">Jagung</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src="/marker-jagung.png" className="w-6 h-7" />
+                  <span className="text-sm">Jagung</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 bg-teal-700 rounded"></span>
+                  <span className="text-sm">Tebu</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src="/marker-tebu.png" className="w-6 h-7" />
+                  <span className="text-sm">Tebu</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-4 bg-gray-200 rounded"></span>
+                  <span className="text-sm">Komoditas lain</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <img src="/marker-other.png" className="w-6 h-7" />
+                  <span className="text-sm">Komoditas lain</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </Drawer>
 
     </div>
   );

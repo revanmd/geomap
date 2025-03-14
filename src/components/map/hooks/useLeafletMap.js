@@ -216,7 +216,7 @@ export default function useLeafletMap({
     }
   }, []);
 
-  const setDataMap = useCallback((newDataMap) => {
+  const setDataMap = useCallback((newDataMap,  opacity = 0.5) => {
     if (!mapInstanceRef.current) return;
 
     // Remove existing data layer
@@ -228,7 +228,7 @@ export default function useLeafletMap({
     // Add new data layer if not "none"
     if (dataMapOptions[newDataMap] && newDataMap !== "none") {
       dataLayerRef.current = L.tileLayer(dataMapOptions[newDataMap], {
-        opacity: 0.7,
+        opacity,
         maxZoom: 18,
         maxNativeZoom: 17
       }).addTo(mapInstanceRef.current);

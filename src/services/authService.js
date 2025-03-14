@@ -1,36 +1,32 @@
-import axios from "axios";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL; // Set in .env.local
+import api from "./api";
 
 export const authService = {
   login: async (username, password) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/users/_login`, {
-        username: username,
-        password: password,
-      });
-
-      // Store token in localStorage or cookies
-      if (typeof window !== "undefined") {
-        localStorage.setItem("token", response.data?.data?.token);
-      }
-
+      const response = await api.post(
+        "/api/users/_login",
+        { username, password }
+      );
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Login failed" };
     }
   },
 
-  logout: () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("token");
+  logout: async () => {
+    try {
+      await api.delete("/api/users/_logout", {}, { withCredentials: true });
+    } catch (error) {
+      console.error("Logout failed", error);
     }
   },
 
-  getToken: () => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("token");
+  checkAuthStatus: async () => {
+    try {
+      const response = await api.get("/api/users/_me");
+      return response.data; // Returns user data if authenticated
+    } catch (error) {
+      return null; // User is not authenticated
     }
-    return null;
   },
 };

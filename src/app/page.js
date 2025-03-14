@@ -5,13 +5,15 @@ import { authService } from "@/services/authService";
 import { Col, Form, Image, Input, message, Row } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-  
+
 export default function Home() {
   const { showLoading, hideLoading } = useLoading();
 
   const router = useRouter()
   const [FormLogin] = Form.useForm()
+
   const [isFilled, setIsFilled] = useState(false)
+  const [isChecking, setIsChecking] = useState(true);
 
   const handleChangeFields = () => {
     const values = FormLogin.getFieldsValue()
@@ -27,20 +29,44 @@ export default function Home() {
     const values = FormLogin.getFieldsValue()
     try {
       const response = await authService.login(values.username, values.password);
-      if (response){
+      if (response) {
+        if (typeof window != "undefined") {
+          localStorage.setItem("username", response.data.username)
+        }
+
         message.success("Berhasil login")
         router.push("/collaborator")
-      }else{
+      } else {
         message.error("Username atau password salah")
       }
-      
+
     } catch (err) {
       message.error("Terdapat kesalahan pada server")
-    } finally{
+    } finally {
       hideLoading()
     }
-    
+
   }
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch("/api/auth/check", { credentials: "include" });
+        if (response.ok) {
+          router.push("/collaborator"); // Redirect if already logged in
+        }
+      } catch (error) {
+        console.error("Auth check failed", error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Show loading state while checking authentication
+  if (isChecking) return <p>Loading...</p>;
 
 
   return (
@@ -96,7 +122,7 @@ export default function Home() {
                 <Input.Password className="mt-2" placeholder="Masukan password" size="large"></Input.Password>
               </Form.Item>
 
-              <button 
+              <button
                 className={`py-3 w-full rounded font-semibold text-white mt-3 ${isFilled ? 'bg-blue' : 'bg-blue-200'}`}
                 disabled={!isFilled}
               >

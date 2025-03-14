@@ -1,6 +1,6 @@
 "use client"
 
-import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X, Camera } from "lucide-react";
+import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X, Camera, MapIcon } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
@@ -12,7 +12,7 @@ import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
 import { CapitalizeFirstLetter, ConvertIsoToIndonesianDate } from "@/utility/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -140,6 +140,11 @@ export default function Collaborator() {
             } else {
                 showMessage("Gagal mengupload foto", <CancleIcon />)
             }
+
+            if (event == "summary") {
+                fetchSelfMarker()
+            }
+
             setIsEditOpen(false)
 
 
@@ -147,6 +152,7 @@ export default function Collaborator() {
             console.log(error)
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
         }
+
         resetSurvey()
         hideLoading()
     }
@@ -160,7 +166,12 @@ export default function Collaborator() {
         try {
             await markerService.deleteMarker(markerDetail?.id);
             mapFunctions.removeMarker(markerDetail?.id)
+            if (event == "summary") {
+                fetchSelfMarker()
+            }
+
             showMessage("Berhasil menghapus komoditas", <ChecklistIcon />, event)
+
         } catch (error) {
             console.log(error)
             showMessage("Gagal menghapus komoditas", <CancleIcon />, event)
@@ -321,6 +332,9 @@ export default function Collaborator() {
     ////////////////////////////////
     /// NAVIGATION
 
+    const [username, setUsername] = useState("")
+    const searchParams = useSearchParams();
+
     const handleMenuSurvey = () => {
         showLoading("Mohon tunggu..")
         setTimeout(() => {
@@ -340,7 +354,31 @@ export default function Collaborator() {
         }, 3000)
 
     }
-    const handleMenuAccount = () => { }
+    const handleMenuAccount = () => {
+        showLoading("Mohon tunggu..")
+        setTimeout(() => {
+            router.push("/account")
+            hideLoading()
+        }, 1000)
+    }
+
+    
+
+
+    useEffect(() => {
+        if (typeof window != "undefined") {
+            let username = localStorage.getItem("username")
+            setUsername(username)
+        }
+
+        const navigation = searchParams.get("navigation");
+        if (navigation == "view") {
+            setEvent("view")
+        } else {
+            setEvent("summary")
+            fetchSelfMarker()
+        }
+    }, [])
 
 
     useEffect(() => {
@@ -355,7 +393,6 @@ export default function Collaborator() {
             <MapComponent
                 event={event}
                 screen={screen}
-                expandedBar={event == 'summary' ? true : false}
                 callbackPressMap={callbackPressMap}
                 callbackClickMarker={callbackClickMarker}
                 onMapReady={handleMapReady}
@@ -437,7 +474,7 @@ export default function Collaborator() {
                                 onClick={handleMenuSurvey}
                             >
                                 <Map size={22} />
-                                <span className="text-xs">Jelajah</span>
+                                <span className="text-xs mt-1">Jelajah</span>
                             </div>
                             <div className={`flex flex-col items-center font-medium 
                                     ${event == "summary" ? "text-blue" : "text-gray-500"
@@ -445,13 +482,13 @@ export default function Collaborator() {
                                 onClick={handleMenuSummary}
                             >
                                 <SquareMenu size={22} />
-                                <span className="text-xs">Data Survey</span>
+                                <span className="text-xs mt-1">Data Survey</span>
                             </div>
                             <div className="flex flex-col items-center text-gray-500"
                                 onClick={handleMenuAccount}
                             >
                                 <CircleUserRound size={22} />
-                                <span className="text-xs">Akun</span>
+                                <span className="text-xs mt-1">Akun</span>
                             </div>
                         </div>
 
@@ -495,7 +532,7 @@ export default function Collaborator() {
                                     <InfoIcon />
                                 </div>
                                 <div className="flex-auto text-xs font-semibold">
-                                    Silakan pilih titik di dalam radius area Anda untuk menetapkan komoditas yang tersedia
+                                    Silakan tekan area selama 2 detik di dalam lingkaran biru radius lokasi anda untuk menetapkan komoditas.
                                 </div>
                             </div>
                         </div>
@@ -698,18 +735,21 @@ export default function Collaborator() {
                         <img src={uploadedImage} className="image-commodity rounded"></img>
                     </div>
 
-                    <div className="fixed bottom-0 left-0 w-full bg-white p-5">
-                        <div className="flex space-x-3 text-sm">
-                            <button
-                                className="flex-1 border border-red-500 text-red-500 p-2 rounded font-semibold"
-                                onClick={onDeleteDetail}
-                            >Hapus</button>
-                            <button
-                                className="flex-1 bg-blue text-white p-2 rounded font-semibold"
-                                onClick={onEditDetail}
-                            >Ubah</button>
+                    {(markerDetail?.username == username) && (
+                        <div className="fixed bottom-0 left-0 w-full bg-white p-5">
+                            <div className="flex space-x-3 text-sm">
+                                <button
+                                    className="flex-1 border border-red-500 text-red-500 p-2 rounded font-semibold"
+                                    onClick={onDeleteDetail}
+                                >Hapus</button>
+                                <button
+                                    className="flex-1 bg-blue text-white p-2 rounded font-semibold"
+                                    onClick={onEditDetail}
+                                >Ubah</button>
+                            </div>
                         </div>
-                    </div>
+                    )
+                    }
 
                 </div>
             </Drawer>
@@ -840,6 +880,7 @@ export default function Collaborator() {
                 </div>
 
             </Modal>
+
 
 
         </main>
