@@ -4,7 +4,7 @@ import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, I
 import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Drawer, message, Modal } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
@@ -333,7 +333,13 @@ export default function Collaborator() {
     /// NAVIGATION
 
     const [username, setUsername] = useState("")
-    const searchParams = useSearchParams();
+    
+    const searchParams = useMemo(() => {
+        if (typeof window !== "undefined") {
+            return new URLSearchParams(window.location.search);
+        }
+        return new URLSearchParams();
+    }, []);
 
     const handleMenuSurvey = () => {
         showLoading("Mohon tunggu..")
@@ -370,15 +376,17 @@ export default function Collaborator() {
             let username = localStorage.getItem("username")
             setUsername(username)
         }
-
-        const navigation = searchParams.get("navigation");
-        if (navigation == "view") {
-            setEvent("view")
-        } else {
-            setEvent("summary")
-            fetchSelfMarker()
-        }
     }, [])
+
+    useEffect(() => {
+        const navigation = searchParams.get("navigation");
+        if (navigation === "view") {
+            setEvent("view");
+        } else {
+            setEvent("summary");
+            fetchSelfMarker();
+        }
+    }, [searchParams]);
 
 
     useEffect(() => {
