@@ -333,13 +333,6 @@ export default function Collaborator() {
     /// NAVIGATION
 
     const [username, setUsername] = useState("")
-    
-    const searchParams = useMemo(() => {
-        if (typeof window !== "undefined") {
-            return new URLSearchParams(window.location.search);
-        }
-        return new URLSearchParams();
-    }, []);
 
     const handleMenuSurvey = () => {
         showLoading("Mohon tunggu..")
@@ -375,19 +368,18 @@ export default function Collaborator() {
         if (typeof window != "undefined") {
             let username = localStorage.getItem("username")
             setUsername(username)
+
+            let navigation = new URLSearchParams(window.location.search);
+            if (navigation.get("navigation") == "summary") {
+                fetchSelfMarker();
+                setEvent("summary");
+            } else {
+                setEvent("view");
+                
+            }
         }
     }, [])
 
-    useEffect(() => {
-        const navigation = searchParams.get("navigation");
-        if (navigation == "summary") {
-            fetchSelfMarker();
-            setEvent("summary");
-        } else {
-            setEvent("view");
-            
-        }
-    }, [searchParams]);
 
 
     useEffect(() => {

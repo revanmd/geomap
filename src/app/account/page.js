@@ -58,7 +58,7 @@ export default function AccountPage() {
     },[])
 
     return (
-        <div className="flex flex-col h-screen bg-gray-50">
+        <div className="flex flex-col h-screen w-screen bg-gray-50">
             {/* Header */}
             <div className="flex items-center p-4 border-b relative">
                 <h1 className="text-lg font-medium mx-auto">Akun</h1>
@@ -117,7 +117,7 @@ export default function AccountPage() {
             </div>
 
             {/* Bottom Navigation */}
-            <div className="relative w-screen justify-around py-3 flex border bg-white">
+            <div className="absolute bottom-0 w-screen justify-around py-3 flex border bg-white">
                 <div className={`flex flex-col items-center font-medium text-gray-500`}
                     onClick={handleMenuSurvey}
                 >
