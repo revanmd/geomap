@@ -216,7 +216,7 @@ export default function useLeafletMap({
     }
   }, []);
 
-  const setDataMap = useCallback((newDataMap,  opacity = 0.5) => {
+  const setDataMap = useCallback((newDataMap, opacity = 0.5) => {
     if (!mapInstanceRef.current) return;
 
     // Remove existing data layer
@@ -355,6 +355,12 @@ export default function useLeafletMap({
     });
   }, []);
 
+  const removeMarkerAdd = useCallback(() => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(markerAddRef.current);
+    }
+  }, []);
+
   useEffect(() => {
     if (mapInstanceRef.current && currentDataMap !== "none") {
       setDataMap(currentDataMap);
@@ -373,6 +379,7 @@ export default function useLeafletMap({
     setDataMap,
     appendMarker,
     removeMarker,
+    removeMarkerAdd,
     updateMarker,
     initializeMarkers,
     markerData,

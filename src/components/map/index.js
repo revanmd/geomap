@@ -41,6 +41,7 @@ export default function Map({
     currentDataMap,
     appendMarker,
     removeMarker,
+    removeMarkerAdd,
     updateMarker,
     initializeMarkers,
   } = useLeafletMap({
@@ -84,6 +85,7 @@ export default function Map({
       onMapReady({
         appendMarker,
         removeMarker,
+        removeMarkerAdd,
         updateMarker,
         getGpsLocation,
         getMarkerAddLocation,

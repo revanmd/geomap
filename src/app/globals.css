@@ -77,24 +77,41 @@
 .image-commodity-container{
   position:relative;
   width:100%;
-  height:218px;
+  height:128px;
   border-radius: 8px !important;
 }
-
 .image-commodity-container::before {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5); /* Adjust transparency */
+  height: 128px;
+  background: rgba(0, 0, 0, 0.8); /* Adjust transparency */
   border-radius: 8px !important;
 }
+
+.image-commodity-container-empty{
+  position:relative;
+  width:100%;
+  height:128px;
+  border-radius: 8px !important;
+}
+
+.input-custom.ant-input{
+  padding-top:8px !important;
+  padding-bottom:8px !important
+}
+
+
+
 .image-commodity-sm{
   width:100%;
   height:218px;
   border-radius: 8px !important;
+}
+.form-custom-margin .ant-form-item{
+  margin-bottom: 10px !important;
 }
 
 
@@ -146,4 +163,25 @@
 
 .bg-gray-800{
   background-color: #EDEFEE !important
+}
+
+.ant-select-selector{
+  padding: 4px 10px !important;
+}
+.ant-select-single {
+  height: auto !important;
+}
+
+input:focus {
+  outline: none;
+}
+
+.ant-picker{
+  padding: 8px 11px 8px !important;
+}
+.ant-picker-dropdown{
+  z-index: 999999999999 !important;
+}
+.ant-select-dropdown {
+  z-index: 999999999999 !important; /* Increase as needed */
 }

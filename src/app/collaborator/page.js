@@ -1,18 +1,19 @@
 "use client"
 
-import { Map, SquareMenu, CircleUserRound, Layers, Crosshair, Compass, Search, Info, ArrowLeft, X, Camera, MapIcon } from "lucide-react";
+import { Map, SquareMenu, CircleUserRound, ArrowLeft, X, Camera, Minus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Drawer, message, Modal } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DatePicker, Drawer, Form, Input, Modal, Select } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
 import { CapitalizeFirstLetter, ConvertIsoToIndonesianDate } from "@/utility/utils";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import moment from "moment";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -37,7 +38,7 @@ export default function Collaborator() {
     }
 
     // form-filling, detail, tagging
-    const [event, setEvent] = useState('view')
+    const [event, setEvent] = useState('survey')
     const [surveyStep, setSurveyStep] = useState(0)
     const [screen, setScreen] = useState('minimize')
 
@@ -187,26 +188,39 @@ export default function Collaborator() {
     //// SURVEY
 
     const [surveyCommodity, setSurveyCommodity] = useState("")
+    const [surveyHST, setSurveyHST] = useState("")
+
     const clickedCommodity = (commodityType) => {
         setSurveyCommodity(commodityType)
     }
 
-    const clickedCloseSurvey = () => {
-        setEvent('view')
-        resetSurvey()
-    }
-
-    const nextSurveiStep = () => {
-        setSurveyStep(surveyStep + 1)
-    }
-
-    const prevSurveiStep = () => {
-        if (surveyStep != 0) {
-            setSurveyStep(surveyStep - 1)
+    const handleBackSurvey = () => {
+        if (event == "survey" && surveyStep == 0) {
+            setEvent('view')
+            resetSurvey()
+        }else if (event == "survey" && surveyStep == 1) {
+            setSurveyStep(0)
+            resetSurvey()
+        }else if (event == "survey" && surveyStep == 2) {
+            setSurveyStep(1)
+            setCapturedImage("")
+            setIsWebcamActive(false)
         }
     }
 
+    const handleSurveyPhoto = () => {
+        setSurveyStep(2)
+        setIsWebcamActive(true)
+    }
+
+    const onChangeHST = (event) => {
+        setSurveyHST(event?.target?.value)
+    }
+
     const resetSurvey = () => {
+        mapFunctions.removeMarkerAdd()
+        setDataHistory(null)
+        setSurveyHST(null)
         setSurveyCommodity("")
         setSurveyStep(0)
         setCapturedImage("")
@@ -266,11 +280,11 @@ export default function Collaborator() {
     };
 
     const handleWebcamCaptured = () => {
-        if (surveyStep == 2 && event == "survey") {
-            finishSurvey()
+        setUploadedImage(capturedImage)
+        setIsWebcamActive(false);
+        if (event == "survey") {
+            setSurveyStep(1)
         } else {
-            setUploadedImage(capturedImage)
-            setIsWebcamActive(false);
             setIsEditOpen(true)
         }
     }
@@ -361,7 +375,61 @@ export default function Collaborator() {
         }, 1000)
     }
 
-    
+
+    ////////////////////////////////////////////////////////////////
+    /// HISTORY TANAM
+
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+    const [dataHistory, setDataHistory] = useState()
+    const [FormHistory] = Form.useForm()
+
+
+    const optionCommodity = [
+        { label: 'Padi', value: 'padi' },
+        { label: 'Jagung', value: 'jagung' },
+        { label: 'Tebu', value: 'tebu' },
+        { label: 'Lainnya', value: 'other' },
+    ]
+
+    const setFieldsHistory = (data) => {
+        const payload = {
+            ...data,
+            panen_mt_1: data?.panen_mt_1 ? moment(data?.panen_mt_1,'YYYY-MM') : null,
+            panen_mt_2: data?.panen_mt_2 ? moment(data?.panen_mt_2,'YYYY-MM') : null,
+            panen_mt_3: data?.panen_mt_3 ? moment(data?.panen_mt_3,'YYYY-MM') : null,
+            tanam_mt_1: data?.tanam_mt_1 ? moment(data?.tanam_mt_1,'YYYY-MM') : null,
+            tanam_mt_2: data?.tanam_mt_2 ? moment(data?.tanam_mt_2,'YYYY-MM') : null,
+            tanam_mt_3: data?.tanam_mt_3 ? moment(data?.tanam_mt_3,'YYYY-MM') : null,
+        }
+        FormHistory.setFieldsValue(payload)
+    }
+
+    const onOpenHistory = () => {
+        setFieldsHistory(dataHistory)
+        setIsHistoryOpen(true)
+    }
+
+    const onCloseHistory = () => {
+        setIsHistoryOpen(false)
+    }
+
+    const handleFinishHistory = () => {
+        const values = FormHistory.getFieldsValue()
+
+        const body = {
+            ...values,
+            panen_mt_1: values.panen_mt_1?.format("YYYY-MM"),
+            panen_mt_2: values.panen_mt_2?.format("YYYY-MM"),
+            panen_mt_3: values.panen_mt_3?.format("YYYY-MM"),
+            tanam_mt_1: values.tanam_mt_1?.format("YYYY-MM"),
+            tanam_mt_2: values.tanam_mt_2?.format("YYYY-MM"),
+            tanam_mt_3: values.tanam_mt_3?.format("YYYY-MM"),
+        }
+
+        setDataHistory(body)
+        setIsHistoryOpen(false)
+        FormHistory.resetFields()
+    }
 
 
     useEffect(() => {
@@ -375,7 +443,7 @@ export default function Collaborator() {
                 setEvent("summary");
             } else {
                 setEvent("view");
-                
+
             }
         }
     }, [])
@@ -398,6 +466,7 @@ export default function Collaborator() {
                 callbackClickMarker={callbackClickMarker}
                 onMapReady={handleMapReady}
             />
+
 
             {
                 event == "summary" && (
@@ -508,7 +577,7 @@ export default function Collaborator() {
                         }}
                     >
                         <div className="bg-white ml-5 p-3 rounded-full text-blue shadow-lg"
-                            onClick={clickedCloseSurvey}
+                            onClick={handleBackSurvey}
                         >
                             <ArrowLeft size={22} />
                         </div>
@@ -548,25 +617,26 @@ export default function Collaborator() {
                             position: 'absolute',
                             bottom: 0,
                             left: 0,
-                            zIndex: 9999
+                            zIndex: 9999,
+                            transform: 'translateY(0)', // Start at normal position
+                            transition: 'transform 0.2s ease-out' // Add smooth transition
                         }}
-                        className="bg-white w-screen"
+                        className="bg-white w-screen animate-slide-up"
                     >
-                        <div className="flex justify-between px-5 pt-3 items-center">
-                            <div className="flex font-semibold text-base text-black">
-                                Tandai dengan komoditas
-                            </div>
-                            <div className="flex text-gray"
-                                onClick={clickedCloseSurvey}
+                        <div className="flex justify-between items-center px-4 pt-4">
+                            <h1 className="text-base font-semibold text-black">Tandai dengan komoditas</h1>
+                            <h1 className="text-xs font-semibold text-black"
+                                onClick={onCloseEdit}
                             >
-                                <X className="text-sm" />
-                            </div>
+                                <X />
+                            </h1>
                         </div>
 
-                        <div className="py-1 text-center w-full flex justify-around px-4">
+                        <h2 className="text-sm mt-3 px-4"><span className="font-semibold text-red-600">*</span> Pilih Komoditas</h2>
+                        <div className="text-center w-full flex justify-around px-3">
                             <div style={{ width: '70px' }}
                                 className={`border rounded text-center mx-2 py-3 my-2 
-                                    ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
+                                ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
                                     clickedCommodity("padi")
@@ -605,7 +675,7 @@ export default function Collaborator() {
                             </div>
                             <div style={{ width: '70px' }}
                                 className={`border rounded text-center mx-2 py-3 my-2 
-                                    ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
+                                ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
                                     clickedCommodity("other")
@@ -618,18 +688,169 @@ export default function Collaborator() {
                             </div>
                         </div>
 
+                        <h2 className="text-sm mt-2 px-4">Hari setelah tanam <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                        <div className="mx-4 mt-2">
+                            <Input className="input-custom" placeholder="Masukkan HST"
+                                value={surveyHST}
+                                onChange={onChangeHST}
+                            ></Input>
+                        </div>
+
+
+                        <h2 className="text-sm mt-3 px-4"><span className="font-semibold text-red-600">*</span> Foto komoditas</h2>
+                        <div className="px-4 mt-2">
+                            <div className="image-commodity-container-empty border border-gray-300 rounded "
+                                onClick={handleSurveyPhoto}
+                            >
+
+                                {capturedImage && (
+                                    <>
+                                        <img src={uploadedImage} className="image-commodity-container rounded" />
+                                        {/* Overlay for darkening effect */}
+                                        <div className="absolute inset-0 bg-black opacity-50"></div>
+                                    </>
+                                )}
+
+                                {/* Centered content */}
+                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                                    <div className={capturedImage ? "text-white" : "text-gray-500"}>
+                                        <Camera className="text-sm block w-full" />
+                                        <div className="mt-1 font-regular">
+                                            {capturedImage ? "Ganti Foto" : "Tambah foto komoditas"}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
                         <div
-                            className={`mb-3 font-semibold text-white text-center text-sm p-2 mx-6 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
-                            disabled={surveyCommodity != "" ? false : true}
-                            onClick={nextSurveiStep}
+                            className={`mt-5 font-semibold text-white text-center text-sm p-2 mx-4 rounded ${(surveyCommodity != "") && capturedImage ? 'bg-blue' : 'bg-blue-200'}`}
+                            disabled={(surveyCommodity != "") && capturedImage ? false : true}
                         >
-                            + Tambah Foto
+                            Simpan Komoditas
+                        </div>
+                        <div
+                            className={`mb-3 mt-2 font-semibold text-black text-center text-sm p-2 mx-4 rounded border border-gray-400`}
+                            disabled={surveyCommodity != "" ? false : true}
+                            onClick={onOpenHistory}
+                        >
+                            + Tambah Histori Tanam
                         </div>
                     </div>
                 )
             }
+
             {
-                ((event == "survey" && surveyStep == 2) || isWebcamActive) && (
+                isHistoryOpen && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            zIndex: 99999,
+                            transform: 'translateY(0)', // Start at normal position
+                            transition: 'transform 0.2s ease-out' // Add smooth transition
+                        }}
+                        className="bg-white w-screen animate-slide-up"
+                    >
+                        <div className="flex justify-between items-center px-4 pt-4">
+                            <div>
+                                <h1 className="text-base font-semibold text-black">Histori Tanam</h1>
+                                <h2 className="mt-1 text-xs text-gray-500">Data ini bersifat opsional</h2>
+                            </div>
+                            <h1 className="text-xs font-semibold text-black"
+                                onClick={onCloseHistory}
+                            >
+                                <X />
+                            </h1>
+                        </div>
+
+                        <Form form={FormHistory} className="form-custom-margin">
+                            <h2 className="text-sm mt-4 px-4">Periode 1 <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                            <div className="mx-4 mt-2">
+                                <Form.Item
+                                    name="commodity_mt_1"
+                                >
+                                    <Select allowClear options={optionCommodity} className="Pilih komoditas w-full p-3-f" placeholder="Pilih komoditas"></Select>
+                                </Form.Item>
+                            </div>
+
+                            <div className="mx-4">
+                                <div className="flex items-center space-x-2 w-full mb-2">
+                                    <Form.Item name="tanam_mt_1" className="w-full">
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Tanam" />
+                                    </Form.Item>
+                                    <span className="text-gray-300 mb-2"><Minus /></span>
+                                    <Form.Item name="panen_mt_1" className="w-full">
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Panen" />
+                                    </Form.Item>
+                                </div>
+                            </div>
+
+                            <h2 className="text-sm mt-2 px-4">Periode 2 <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                            <div className="mx-4 mt-2">
+                                <Form.Item
+                                    name="commodity_mt_2"
+                                >
+                                    <Select allowClear options={optionCommodity} className="Pilih komoditas w-full p-3-f" placeholder="Pilih komoditas"></Select>
+                                </Form.Item>
+                            </div>
+
+                            <div className="mx-4">
+                                <div className="flex items-center space-x-2 w-full mb-2">
+                                    <Form.Item name="tanam_mt_2" className="w-full">
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Tanam" />
+                                    </Form.Item>
+                                    <span className="text-gray-300 mb-2"><Minus /></span>
+                                    <Form.Item name="panen_mt_2" className="w-full">
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Panen" />
+                                    </Form.Item>
+                                </div>
+                            </div>
+
+                            <h2 className="text-sm mt-2 px-4">Periode 3 <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                            <div className="mx-4 mt-2">
+                                <Form.Item
+                                    name="commodity_mt_3"
+                                >
+                                    <Select allowClear options={optionCommodity} className="Pilih komoditas w-full p-3-f" placeholder="Pilih komoditas"></Select>
+                                </Form.Item>
+                            </div>
+
+                            <div className="mx-4">
+                                <div className="flex items-center space-x-2 w-full mb-2">
+                                    <Form.Item name="tanam_mt_3" className="w-full">
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Tanam" />
+                                    </Form.Item>
+                                    <span className="text-gray-300 mb-2"><Minus /></span>
+                                    <Form.Item name="panen_mt_3" className="w-full">
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Panen" />
+                                    </Form.Item>
+                                </div>
+                            </div>
+
+                            <div className="mx-4 mt-4">
+                                <button
+                                    className={`w-full font-semibold text-white text-center text-sm py-2 rounded bg-blue`}
+                                    onClick={handleFinishHistory}
+                                >
+                                    Simpan Histori Tanam
+                                </button>
+                                <div
+                                    className={`mb-3 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
+                                >
+                                    Kembali
+                                </div>
+                            </div>
+                        </Form>
+                    </div>
+                )
+            }
+
+
+            {
+                isWebcamActive && (
                     <div className="w-screen h-[100dvh] bg-black absolute top-0"
                         style={{
                             zIndex: 99992
@@ -831,7 +1052,7 @@ export default function Collaborator() {
 
                     <h2 className="text-sm px-4">Foto komoditas</h2>
                     <div className="px-4">
-                        <div className="image-commodity-container rounded"
+                        <div className="image-commodity-container rounded "
                             onClick={handleEditPhoto}
                         >
                             <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
@@ -881,6 +1102,7 @@ export default function Collaborator() {
                 </div>
 
             </Modal>
+
 
 
 
