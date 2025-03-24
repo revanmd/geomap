@@ -20,3 +20,31 @@ export function ConvertIsoToIndonesianDate(isoDate) {
         return `${day} ${month} ${year}`;
     }
 }
+export function ConvertDateMonthToIndonesianMonth(dateString) {
+    if (dateString == "undefined" || dateString == null) {
+        return ""
+    }
+
+    const months = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    const [year, month] = dateString.split('-');
+    return months[parseInt(month, 10) - 1];
+}
+
+export function ConvertCommodityTypeToIndonesianCommodity(commodityType) {
+    switch (commodityType) {
+        case "padi":
+            return "Padi"
+        case "jagung":
+            return "Jagung"
+        case "tebu":
+            return "Tebu"
+        case "other":
+            return "Lainnya"
+        default:
+            return ""
+    }
+}

@@ -11,9 +11,9 @@ import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
-import { CapitalizeFirstLetter, ConvertIsoToIndonesianDate } from "@/utility/utils";
+import { CapitalizeFirstLetter, ConvertCommodityTypeToIndonesianCommodity, ConvertDateMonthToIndonesianMonth, ConvertIsoToIndonesianDate } from "@/utility/utils";
 import { useRouter } from "next/navigation";
-import moment from "moment";
+import dayjs from "dayjs";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -47,7 +47,7 @@ export default function Collaborator() {
     }
 
     const callbackClickMarker = (params) => {
-        console.log(params)
+        setEvent("view")
         fetchMarkerDetail(params?.id)
     }
 
@@ -84,6 +84,8 @@ export default function Collaborator() {
             await fetchImage(marker?.data?.photo)
             setMarkerDetail(marker?.data)
             setSurveyCommodity(marker?.data.commodity)
+            setSurveyHST(marker?.data.hst)
+            setDataHistory(marker?.data.planting_history)
             setIsDetailOpen(true)
         } catch (error) {
         } finally {
@@ -96,7 +98,6 @@ export default function Collaborator() {
     }
 
     const onEditDetail = () => {
-        setCapturedImage("")
         setIsDetailOpen(false)
         setIsEditOpen(true)
     }
@@ -122,6 +123,7 @@ export default function Collaborator() {
             if (capturedImage != "") {
                 filename = await uploadFile(capturedImage, `${surveyCommodity}.png`)
             }
+
             if (filename) {
                 const marker = {
                     photo: filename,
@@ -129,7 +131,9 @@ export default function Collaborator() {
                     location: {
                         lat: markerDetail?.location?.lat,
                         lon: markerDetail?.location?.lon
-                    }
+                    },
+                    hst: parseInt(surveyHST),
+                    planting_history: dataHistory
                 }
 
                 // Create marker
@@ -198,10 +202,10 @@ export default function Collaborator() {
         if (event == "survey" && surveyStep == 0) {
             setEvent('view')
             resetSurvey()
-        }else if (event == "survey" && surveyStep == 1) {
+        } else if (event == "survey" && surveyStep == 1) {
             setSurveyStep(0)
             resetSurvey()
-        }else if (event == "survey" && surveyStep == 2) {
+        } else if (event == "survey" && surveyStep == 2) {
             setSurveyStep(1)
             setCapturedImage("")
             setIsWebcamActive(false)
@@ -218,7 +222,9 @@ export default function Collaborator() {
     }
 
     const resetSurvey = () => {
-        mapFunctions.removeMarkerAdd()
+        if (event == "survey") {
+            mapFunctions.removeMarkerAdd()
+        }
         setDataHistory(null)
         setSurveyHST(null)
         setSurveyCommodity("")
@@ -240,8 +246,11 @@ export default function Collaborator() {
                     location: {
                         lat: markerLocation.lat,
                         lon: markerLocation.lng
-                    }
+                    },
+                    hst: parseInt(surveyHST),
+                    planting_history: dataHistory
                 }
+
 
                 // Create marker
                 const response = await markerService.createMarker(marker);
@@ -394,22 +403,42 @@ export default function Collaborator() {
     const setFieldsHistory = (data) => {
         const payload = {
             ...data,
-            panen_mt_1: data?.panen_mt_1 ? moment(data?.panen_mt_1,'YYYY-MM') : null,
-            panen_mt_2: data?.panen_mt_2 ? moment(data?.panen_mt_2,'YYYY-MM') : null,
-            panen_mt_3: data?.panen_mt_3 ? moment(data?.panen_mt_3,'YYYY-MM') : null,
-            tanam_mt_1: data?.tanam_mt_1 ? moment(data?.tanam_mt_1,'YYYY-MM') : null,
-            tanam_mt_2: data?.tanam_mt_2 ? moment(data?.tanam_mt_2,'YYYY-MM') : null,
-            tanam_mt_3: data?.tanam_mt_3 ? moment(data?.tanam_mt_3,'YYYY-MM') : null,
+            commodity_mt_1: data?.commodity_mt_1 != "" && data?.commodity_mt_1 != undefined  ? data.commodity_mt_1 : undefined, 
+            commodity_mt_2: data?.commodity_mt_2 != "" && data?.commodity_mt_2 != undefined ? data.commodity_mt_2 : undefined, 
+            commodity_mt_3: data?.commodity_mt_3 != "" && data?.commodity_mt_3 != undefined ? data.commodity_mt_3 : undefined, 
+            panen_mt_1: data?.panen_mt_1 ? dayjs(data?.panen_mt_1, 'YYYY-MM') : undefined,
+            panen_mt_2: data?.panen_mt_2 ? dayjs(data?.panen_mt_2, 'YYYY-MM') : undefined,
+            panen_mt_3: data?.panen_mt_3 ? dayjs(data?.panen_mt_3, 'YYYY-MM') : undefined,
+            tanam_mt_1: data?.tanam_mt_1 ? dayjs(data?.tanam_mt_1, 'YYYY-MM') : undefined,
+            tanam_mt_2: data?.tanam_mt_2 ? dayjs(data?.tanam_mt_2, 'YYYY-MM') : undefined,
+            tanam_mt_3: data?.tanam_mt_3 ? dayjs(data?.tanam_mt_3, 'YYYY-MM') : undefined,
         }
+        console.log(payload)
         FormHistory.setFieldsValue(payload)
     }
 
     const onOpenHistory = () => {
+        if (event == "view") {
+            setIsEditOpen(false)
+        }
+
+        if (event == "survey") {
+            setSurveyStep(0)
+        }
+
         setFieldsHistory(dataHistory)
         setIsHistoryOpen(true)
     }
 
     const onCloseHistory = () => {
+        if (event == "view") {
+            setIsEditOpen(true)
+        }
+
+        if (event == "survey") {
+            setSurveyStep(1)
+        }
+
         setIsHistoryOpen(false)
     }
 
@@ -429,6 +458,14 @@ export default function Collaborator() {
         setDataHistory(body)
         setIsHistoryOpen(false)
         FormHistory.resetFields()
+
+        if (event == "view") {
+            setIsEditOpen(true)
+        }
+
+        if (event == "survey") {
+            setSurveyStep(1)
+        }
     }
 
 
@@ -626,16 +663,16 @@ export default function Collaborator() {
                         <div className="flex justify-between items-center px-4 pt-4">
                             <h1 className="text-base font-semibold text-black">Tandai dengan komoditas</h1>
                             <h1 className="text-xs font-semibold text-black"
-                                onClick={onCloseEdit}
+                                onClick={handleBackSurvey}
                             >
                                 <X />
                             </h1>
                         </div>
 
-                        <h2 className="text-sm mt-3 px-4"><span className="font-semibold text-red-600">*</span> Pilih Komoditas</h2>
-                        <div className="text-center w-full flex justify-around px-3">
+                        <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Pilih Komoditas</h2>
+                        <div className="text-center w-full flex justify-around px-3 mt-2">
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-2 
+                                className={`border rounded text-center mx-2 py-3 
                                 ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -648,7 +685,7 @@ export default function Collaborator() {
                                 </div>
                             </div>
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-2 
+                                className={`border rounded text-center mx-2 py-3
                                 ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -661,7 +698,7 @@ export default function Collaborator() {
                                 </div>
                             </div>
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-2 
+                                className={`border rounded text-center mx-2 py-3
                                 ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -674,7 +711,7 @@ export default function Collaborator() {
                                 </div>
                             </div>
                             <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 my-2 
+                                className={`border rounded text-center mx-2 py-3
                                 ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
                                     }`}
                                 onClick={() => {
@@ -688,7 +725,7 @@ export default function Collaborator() {
                             </div>
                         </div>
 
-                        <h2 className="text-sm mt-2 px-4">Hari setelah tanam <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                        <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam <span className="font-light text-gray-500"> (Opsional)</span></h2>
                         <div className="mx-4 mt-2">
                             <Input className="input-custom" placeholder="Masukkan HST"
                                 value={surveyHST}
@@ -697,7 +734,7 @@ export default function Collaborator() {
                         </div>
 
 
-                        <h2 className="text-sm mt-3 px-4"><span className="font-semibold text-red-600">*</span> Foto komoditas</h2>
+                        <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Foto komoditas</h2>
                         <div className="px-4 mt-2">
                             <div className="image-commodity-container-empty border border-gray-300 rounded "
                                 onClick={handleSurveyPhoto}
@@ -712,10 +749,10 @@ export default function Collaborator() {
                                 )}
 
                                 {/* Centered content */}
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
                                     <div className={capturedImage ? "text-white" : "text-gray-500"}>
-                                        <Camera className="text-sm block w-full" />
-                                        <div className="mt-1 font-regular">
+                                        <Camera className="block w-full" size={16} />
+                                        <div className="mt-1 text-center">
                                             {capturedImage ? "Ganti Foto" : "Tambah foto komoditas"}
                                         </div>
                                     </div>
@@ -724,18 +761,66 @@ export default function Collaborator() {
                         </div>
 
 
-                        <div
-                            className={`mt-5 font-semibold text-white text-center text-sm p-2 mx-4 rounded ${(surveyCommodity != "") && capturedImage ? 'bg-blue' : 'bg-blue-200'}`}
-                            disabled={(surveyCommodity != "") && capturedImage ? false : true}
-                        >
-                            Simpan Komoditas
-                        </div>
-                        <div
-                            className={`mb-3 mt-2 font-semibold text-black text-center text-sm p-2 mx-4 rounded border border-gray-400`}
-                            disabled={surveyCommodity != "" ? false : true}
-                            onClick={onOpenHistory}
-                        >
-                            + Tambah Histori Tanam
+                        {
+                            dataHistory && (
+                                <div className="px-4 text-sm ">
+                                    <h2 className="mt-4 font-medium">History Tanam</h2>
+                                    {
+                                        dataHistory.commodity_mt_1 && (
+                                            <div className="flex justify-between mt-2">
+                                                <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_1)}</span>
+                                                <span className="font-semibold">
+                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_1)}
+                                                    &nbsp;-&nbsp;
+                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_1)}
+                                                </span>
+                                            </div>
+                                        )
+                                    }
+                                    {
+                                        dataHistory.commodity_mt_2 && (
+                                            <div className="flex justify-between mt-2">
+                                                <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_2)}</span>
+                                                <span className="font-semibold">
+                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_2)}
+                                                    &nbsp;-&nbsp;
+                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_2)}
+                                                </span>
+                                            </div>
+                                        )
+                                    }
+                                    {
+                                        dataHistory.commodity_mt_3 && (
+                                            <div className="flex justify-between mt-2">
+                                                <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_3)}</span>
+                                                <span className="font-semibold">
+                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_3)}
+                                                    &nbsp;-&nbsp;
+                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_3)}
+                                                </span>
+                                            </div>
+                                        )
+                                    }
+                                </div>
+                            )
+                        }
+
+
+                        <div className="mx-4">
+                            <div
+                                className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded ${(surveyCommodity != "") && capturedImage ? 'bg-blue' : 'bg-blue-200'}`}
+                                disabled={(surveyCommodity != "") && capturedImage ? false : true}
+                                onClick={finishSurvey}
+                            >
+                                Simpan Komoditas
+                            </div>
+                            <div
+                                className={`mb-4 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
+                                disabled={surveyCommodity != "" ? false : true}
+                                onClick={onOpenHistory}
+                            >
+                                + Tambah Histori Tanam
+                            </div>
                         </div>
                     </div>
                 )
@@ -767,7 +852,7 @@ export default function Collaborator() {
                         </div>
 
                         <Form form={FormHistory} className="form-custom-margin">
-                            <h2 className="text-sm mt-4 px-4">Periode 1 <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                            <h2 className="text-sm mt-4 px-4 font-medium">Periode 1 <span className="font-light text-gray-500"> (Opsional)</span></h2>
                             <div className="mx-4 mt-2">
                                 <Form.Item
                                     name="commodity_mt_1"
@@ -776,19 +861,19 @@ export default function Collaborator() {
                                 </Form.Item>
                             </div>
 
-                            <div className="mx-4">
-                                <div className="flex items-center space-x-2 w-full mb-2">
+                            <div className="mx-4 mt-2">
+                                <div className="flex items-center space-x-2 w-full">
                                     <Form.Item name="tanam_mt_1" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Tanam" />
+                                        <DatePicker format="YYYY-MM" className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
                                     </Form.Item>
-                                    <span className="text-gray-300 mb-2"><Minus /></span>
+                                    <span className="text-gray-300"><Minus /></span>
                                     <Form.Item name="panen_mt_1" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Panen" />
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
                                     </Form.Item>
                                 </div>
                             </div>
 
-                            <h2 className="text-sm mt-2 px-4">Periode 2 <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                            <h2 className="text-sm mt-4 px-4 font-medium">Periode 2 <span className="font-light text-gray-500"> (Opsional)</span></h2>
                             <div className="mx-4 mt-2">
                                 <Form.Item
                                     name="commodity_mt_2"
@@ -797,19 +882,19 @@ export default function Collaborator() {
                                 </Form.Item>
                             </div>
 
-                            <div className="mx-4">
-                                <div className="flex items-center space-x-2 w-full mb-2">
+                            <div className="mx-4 mt-2">
+                                <div className="flex items-center space-x-2 w-full">
                                     <Form.Item name="tanam_mt_2" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Tanam" />
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
                                     </Form.Item>
-                                    <span className="text-gray-300 mb-2"><Minus /></span>
+                                    <span className="text-gray-300"><Minus /></span>
                                     <Form.Item name="panen_mt_2" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Panen" />
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
                                     </Form.Item>
                                 </div>
                             </div>
 
-                            <h2 className="text-sm mt-2 px-4">Periode 3 <span className="font-regular text-gray-300"> (Opsional)</span></h2>
+                            <h2 className="text-sm mt-4 px-4 font-medium">Periode 3 <span className="font-light text-gray-500"> (Opsional)</span></h2>
                             <div className="mx-4 mt-2">
                                 <Form.Item
                                     name="commodity_mt_3"
@@ -818,19 +903,19 @@ export default function Collaborator() {
                                 </Form.Item>
                             </div>
 
-                            <div className="mx-4">
-                                <div className="flex items-center space-x-2 w-full mb-2">
+                            <div className="mx-4 mt-2">
+                                <div className="flex items-center space-x-2 w-full">
                                     <Form.Item name="tanam_mt_3" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Tanam" />
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
                                     </Form.Item>
-                                    <span className="text-gray-300 mb-2"><Minus /></span>
+                                    <span className="text-gray-300"><Minus /></span>
                                     <Form.Item name="panen_mt_3" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu Panen" />
+                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
                                     </Form.Item>
                                 </div>
                             </div>
 
-                            <div className="mx-4 mt-4">
+                            <div className="mx-4 mt-5">
                                 <button
                                     className={`w-full font-semibold text-white text-center text-sm py-2 rounded bg-blue`}
                                     onClick={handleFinishHistory}
@@ -839,6 +924,7 @@ export default function Collaborator() {
                                 </button>
                                 <div
                                     className={`mb-3 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
+                                    onClick={onCloseHistory}
                                 >
                                     Kembali
                                 </div>
@@ -853,7 +939,7 @@ export default function Collaborator() {
                 isWebcamActive && (
                     <div className="w-screen h-[100dvh] bg-black absolute top-0"
                         style={{
-                            zIndex: 99992
+                            zIndex: 9999999
                         }}
                     >
                         <Webcam
@@ -865,7 +951,7 @@ export default function Collaborator() {
                                 height: "100dvh",
                                 width: "100vw", // Ensures it scales properly
                                 objectFit: "cover", // Helps maintain aspect ratio
-                                zIndex: 99992
+                                zIndex: 9999999
                             }}
                         >
                         </Webcam>
@@ -935,7 +1021,7 @@ export default function Collaborator() {
                 open={isDetailOpen}
                 placement="bottom"
                 zIndex={999999}
-                height={400}
+                height={530}
                 className="drawer-body-modified rounded-xl"
                 closeIcon={false}
             >
@@ -952,10 +1038,59 @@ export default function Collaborator() {
                         </h1>
                     </div>
 
-
                     <div className="mt-4 px-4">
                         <img src={uploadedImage} className="image-commodity rounded"></img>
                     </div>
+
+                    <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam</h2>
+                    <div className="mx-4 mt-2">
+                        <h2 className="text-base">{markerDetail?.hst}</h2>
+                    </div>
+
+
+                    {
+                        markerDetail?.planting_history && (
+                            <div className="px-4 text-sm ">
+                                <h2 className="mt-4 font-medium">History Tanam</h2>
+                                {
+                                    markerDetail?.planting_history?.commodity_mt_1 && (
+                                        <div className="flex justify-between mt-2">
+                                            <span>{ConvertCommodityTypeToIndonesianCommodity(markerDetail?.planting_history?.commodity_mt_1)}</span>
+                                            <span className="font-semibold">
+                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.tanam_mt_1)}
+                                                &nbsp;-&nbsp;
+                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.panen_mt_1)}
+                                            </span>
+                                        </div>
+                                    )
+                                }
+                                {
+                                    markerDetail?.planting_history?.commodity_mt_2 && (
+                                        <div className="flex justify-between mt-2">
+                                            <span>{ConvertCommodityTypeToIndonesianCommodity(markerDetail?.planting_history?.commodity_mt_2)}</span>
+                                            <span className="font-semibold">
+                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.tanam_mt_2)}
+                                                &nbsp;-&nbsp;
+                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.panen_mt_2)}
+                                            </span>
+                                        </div>
+                                    )
+                                }
+                                {
+                                    markerDetail?.planting_history?.commodity_mt_3 && (
+                                        <div className="flex justify-between mt-2">
+                                            <span>{ConvertCommodityTypeToIndonesianCommodity(markerDetail?.planting_history?.commodity_mt_3)}</span>
+                                            <span className="font-semibold">
+                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.tanam_mt_3)}
+                                                &nbsp;-&nbsp;
+                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.panen_mt_3)}
+                                            </span>
+                                        </div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
 
                     {(markerDetail?.username == username) && (
                         <div className="fixed bottom-0 left-0 w-full bg-white p-5">
@@ -980,11 +1115,11 @@ export default function Collaborator() {
                 open={isEditOpen}
                 placement="bottom"
                 zIndex={999999}
-                height={490}
+                height={650}
                 className="drawer-body-modified rounded-xl"
                 closeIcon={false}
             >
-                <div className="">
+                <div className="relative h-full">
                     <div className="flex justify-between items-center px-4 pt-3">
                         <h1 className="text-base font-semibold text-black">Ubah Penanda</h1>
                         <h1 className="text-xs font-semibold text-black"
@@ -994,10 +1129,10 @@ export default function Collaborator() {
                         </h1>
                     </div>
 
-                    <h2 className="text-sm mt-3 px-4">Tandai dengan komoditas</h2>
-                    <div className="text-center w-full flex justify-around px-3">
+                    <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Pilih Komoditas</h2>
+                    <div className="text-center w-full flex justify-around px-3 mt-2">
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-2 
+                            className={`border rounded text-center mx-2 py-3 
                                 ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
                                 }`}
                             onClick={() => {
@@ -1010,7 +1145,7 @@ export default function Collaborator() {
                             </div>
                         </div>
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-2 
+                            className={`border rounded text-center mx-2 py-3
                                 ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
                                 }`}
                             onClick={() => {
@@ -1023,7 +1158,7 @@ export default function Collaborator() {
                             </div>
                         </div>
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-2 
+                            className={`border rounded text-center mx-2 py-3
                                 ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
                                 }`}
                             onClick={() => {
@@ -1036,7 +1171,7 @@ export default function Collaborator() {
                             </div>
                         </div>
                         <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 my-2 
+                            className={`border rounded text-center mx-2 py-3
                                 ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
                                 }`}
                             onClick={() => {
@@ -1050,26 +1185,104 @@ export default function Collaborator() {
                         </div>
                     </div>
 
-                    <h2 className="text-sm px-4">Foto komoditas</h2>
-                    <div className="px-4">
-                        <div className="image-commodity-container rounded "
-                            onClick={handleEditPhoto}
+                    <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam <span className="font-light text-gray-500"> (Opsional)</span></h2>
+                    <div className="mx-4 mt-2">
+                        <Input className="input-custom" placeholder="Masukkan HST"
+                            value={surveyHST}
+                            onChange={onChangeHST}
+                        ></Input>
+                    </div>
+
+
+                    <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Foto komoditas</h2>
+                    <div className="px-4 mt-2">
+                        <div className="image-commodity-container-empty border border-gray-300 rounded "
+                            onClick={handleSurveyPhoto}
                         >
-                            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                                <div className="text-white">
-                                    <Camera className="text-sm block w-full" />
-                                    <div className="mt-1 text-xs font-semibold">Ganti Foto</div>
+
+                            {uploadedImage && (
+                                <>
+                                    <img src={uploadedImage} className="image-commodity-container rounded" />
+                                    {/* Overlay for darkening effect */}
+                                    <div className="absolute inset-0 bg-black opacity-50"></div>
+                                </>
+                            )}
+
+                            {/* Centered content */}
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
+                                <div className={uploadedImage ? "text-white" : "text-gray-500"}>
+                                    <Camera className="block w-full" size={16} />
+                                    <div className="mt-1 text-center">
+                                        {uploadedImage ? "Ganti Foto" : "Tambah foto komoditas"}
+                                    </div>
                                 </div>
                             </div>
-                            <img src={uploadedImage} className="image-commodity-sm rounded mt-1"></img>
                         </div>
                     </div>
 
 
-                    <div className="fixed bottom-0 left-0 w-full bg-white p-5">
-                        <button className="bg-blue text-white p-2 rounded font-semibold w-full text-sm"
-                            onClick={handleFinishEdit}
-                        >Simpan Perubahan</button>
+                    {
+                        dataHistory && (
+                            <div className="px-4 text-sm ">
+                                <h2 className="mt-4 font-medium">History Tanam</h2>
+                                {
+                                    dataHistory.commodity_mt_1 && (
+                                        <div className="flex justify-between mt-2">
+                                            <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_1)}</span>
+                                            <span className="font-semibold">
+                                                {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_1)}
+                                                &nbsp;-&nbsp;
+                                                {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_1)}
+                                            </span>
+                                        </div>
+                                    )
+                                }
+                                {
+                                    dataHistory.commodity_mt_2 && (
+                                        <div className="flex justify-between mt-2">
+                                            <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_2)}</span>
+                                            <span className="font-semibold">
+                                                {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_2)}
+                                                &nbsp;-&nbsp;
+                                                {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_2)}
+                                            </span>
+                                        </div>
+                                    )
+                                }
+                                {
+                                    dataHistory.commodity_mt_3 && (
+                                        <div className="flex justify-between mt-2">
+                                            <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_3)}</span>
+                                            <span className="font-semibold">
+                                                {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_3)}
+                                                &nbsp;-&nbsp;
+                                                {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_3)}
+                                            </span>
+                                        </div>
+                                    )
+                                }
+                            </div>
+                        )
+                    }
+
+
+                    <div className="absolute bottom-0 w-full">
+                        <div className="px-4 ">
+                            <div
+                                className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
+                                disabled={surveyCommodity != "" ? false : true}
+                                onClick={handleFinishEdit}
+                            >
+                                Simpan Perubahan
+                            </div>
+                            <div
+                                className={`mb-4 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
+                                disabled={surveyCommodity != "" ? false : true}
+                                onClick={onOpenHistory}
+                            >
+                                + Tambah Histori Tanam
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -1106,6 +1319,6 @@ export default function Collaborator() {
 
 
 
-        </main>
+        </main >
     )
 }

@@ -13,6 +13,9 @@
 .text-gray-500{
   color : #757575 !important;
 }
+.text-gray-400{
+  color : #D3D3D3 !important;
+}
 .text-gray-600{
   color : #424242 !important;
 }
@@ -70,7 +73,7 @@
 
 .image-commodity{
   width:100%;
-  height:246px;
+  height:184px;
   border-radius: 8px !important;
 }
 
@@ -111,7 +114,7 @@
   border-radius: 8px !important;
 }
 .form-custom-margin .ant-form-item{
-  margin-bottom: 10px !important;
+  margin-bottom: 0px !important;
 }
 
 
@@ -165,6 +168,16 @@
   background-color: #EDEFEE !important
 }
 
+.border-gray-300, .ant-input-outlined{
+  border-color: #EBEBEB !important;
+}
+
+.ant-input, .ant-select-selector, .ant-picker-input input, .ant-select-item-option-content{
+  font-size : 16px !important;
+}
+.ant-input::placeholder, .ant-select-selection-placeholder, .ant-picker-input input::placeholder{
+  color:#757575 !important;
+}
 .ant-select-selector{
   padding: 4px 10px !important;
 }
