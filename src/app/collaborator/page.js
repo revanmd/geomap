@@ -274,6 +274,13 @@ export default function Collaborator() {
         hideLoading()
     }
 
+    const handleKeyPress = (e) => {
+        // Prevent anything that's not a digit
+        if (!/^\d$/.test(e.key)) {
+          e.preventDefault();
+        }
+      };
+
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
 
@@ -494,6 +501,8 @@ export default function Collaborator() {
             fetchMarker()
         }
     }, [mapFunctions])
+
+    
 
 
     return (
@@ -729,9 +738,13 @@ export default function Collaborator() {
 
                         <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam <span className="font-light text-gray-500"> (Opsional)</span></h2>
                         <div className="mx-4 mt-2">
-                            <Input className="input-custom" placeholder="Masukkan HST"
+                            <Input  className="input-custom" placeholder="Masukkan HST"
                                 value={surveyHST}
                                 onChange={onChangeHST}
+                                inputMode="numeric" 
+                                pattern="[0-9]*" 
+                                type="tel"
+                                onKeyPress={handleKeyPress}
                             ></Input>
                         </div>
 
@@ -1192,6 +1205,10 @@ export default function Collaborator() {
                         <Input className="input-custom" placeholder="Masukkan HST"
                             value={surveyHST}
                             onChange={onChangeHST}
+                            inputMode="numeric" 
+                            pattern="[0-9]*" 
+                            type="tel"
+                            onKeyPress={handleKeyPress}
                         ></Input>
                     </div>
 
