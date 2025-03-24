@@ -62,7 +62,7 @@ export default function Map({
           setGpsLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          }, 300, 17);
+          }, 200, 17);
           setIsActiveGPS(true);
           hideLoading();
         },
