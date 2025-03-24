@@ -158,7 +158,7 @@ export default function useLeafletMap({
   }, []);
 
 
-  const setGpsLocation = useCallback((center, radius = 100, zoom = 20) => {
+  const setGpsLocation = useCallback((center, radius = 300, zoom = 20) => {
     if (!mapInstanceRef.current) return;
 
     if (gpsMarkerRef.current) {

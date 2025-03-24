@@ -62,13 +62,19 @@ export default function Map({
           setGpsLocation({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          }, 100, 20);
-          setIsActiveGPS(true)
-          hideLoading()
+          }, 300, 17);
+          setIsActiveGPS(true);
+          hideLoading();
         },
         (error) => {
-          setIsActiveGPS(false)
-          hideLoading()
+          console.error("Geolocation error:", error.message);
+          setIsActiveGPS(false);
+          hideLoading();
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000, // 10 seconds
+          maximumAge: 0    // no cached positions
         }
       );
     } else {

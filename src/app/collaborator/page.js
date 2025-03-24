@@ -277,9 +277,9 @@ export default function Collaborator() {
     const handleKeyPress = (e) => {
         // Prevent anything that's not a digit
         if (!/^\d$/.test(e.key)) {
-          e.preventDefault();
+            e.preventDefault();
         }
-      };
+    };
 
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
@@ -294,6 +294,8 @@ export default function Collaborator() {
         }
     }, [webcamRef]);
     const videoConstraints = {
+        width: { ideal: 1280 }, // HD resolution is usually supported
+        height: { ideal: 720 },
         facingMode: "environment"
     };
 
@@ -412,9 +414,9 @@ export default function Collaborator() {
     const setFieldsHistory = (data) => {
         const payload = {
             ...data,
-            commodity_mt_1: data?.commodity_mt_1 != "" && data?.commodity_mt_1 != undefined  ? data.commodity_mt_1 : undefined, 
-            commodity_mt_2: data?.commodity_mt_2 != "" && data?.commodity_mt_2 != undefined ? data.commodity_mt_2 : undefined, 
-            commodity_mt_3: data?.commodity_mt_3 != "" && data?.commodity_mt_3 != undefined ? data.commodity_mt_3 : undefined, 
+            commodity_mt_1: data?.commodity_mt_1 != "" && data?.commodity_mt_1 != undefined ? data.commodity_mt_1 : undefined,
+            commodity_mt_2: data?.commodity_mt_2 != "" && data?.commodity_mt_2 != undefined ? data.commodity_mt_2 : undefined,
+            commodity_mt_3: data?.commodity_mt_3 != "" && data?.commodity_mt_3 != undefined ? data.commodity_mt_3 : undefined,
             panen_mt_1: data?.panen_mt_1 ? dayjs(data?.panen_mt_1, 'YYYY-MM') : undefined,
             panen_mt_2: data?.panen_mt_2 ? dayjs(data?.panen_mt_2, 'YYYY-MM') : undefined,
             panen_mt_3: data?.panen_mt_3 ? dayjs(data?.panen_mt_3, 'YYYY-MM') : undefined,
@@ -502,7 +504,7 @@ export default function Collaborator() {
         }
     }, [mapFunctions])
 
-    
+
 
 
     return (
@@ -738,11 +740,11 @@ export default function Collaborator() {
 
                         <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam <span className="font-light text-gray-500"> (Opsional)</span></h2>
                         <div className="mx-4 mt-2">
-                            <Input  className="input-custom" placeholder="Masukkan HST"
+                            <Input className="input-custom" placeholder="Masukkan HST"
                                 value={surveyHST}
                                 onChange={onChangeHST}
-                                inputMode="numeric" 
-                                pattern="[0-9]*" 
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 type="tel"
                                 onKeyPress={handleKeyPress}
                             ></Input>
@@ -1205,8 +1207,8 @@ export default function Collaborator() {
                         <Input className="input-custom" placeholder="Masukkan HST"
                             value={surveyHST}
                             onChange={onChangeHST}
-                            inputMode="numeric" 
-                            pattern="[0-9]*" 
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             type="tel"
                             onKeyPress={handleKeyPress}
                         ></Input>
