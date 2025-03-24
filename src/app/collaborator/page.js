@@ -43,6 +43,7 @@ export default function Collaborator() {
     const [screen, setScreen] = useState('minimize')
 
     const callbackPressMap = () => {
+        resetSurvey()
         setSurveyStep(1)
     }
 
@@ -158,6 +159,7 @@ export default function Collaborator() {
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
         }
 
+
         resetSurvey()
         hideLoading()
     }
@@ -225,8 +227,8 @@ export default function Collaborator() {
         if (event == "survey") {
             mapFunctions.removeMarkerAdd()
         }
-        setDataHistory(null)
-        setSurveyHST(null)
+        setDataHistory()
+        setSurveyHST()
         setSurveyCommodity("")
         setSurveyStep(0)
         setCapturedImage("")
@@ -864,11 +866,11 @@ export default function Collaborator() {
                             <div className="mx-4 mt-2">
                                 <div className="flex items-center space-x-2 w-full">
                                     <Form.Item name="tanam_mt_1" className="w-full">
-                                        <DatePicker format="YYYY-MM" className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
+                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
                                     </Form.Item>
                                     <span className="text-gray-300"><Minus /></span>
                                     <Form.Item name="panen_mt_1" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
+                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
                                     </Form.Item>
                                 </div>
                             </div>
@@ -885,11 +887,11 @@ export default function Collaborator() {
                             <div className="mx-4 mt-2">
                                 <div className="flex items-center space-x-2 w-full">
                                     <Form.Item name="tanam_mt_2" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
+                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
                                     </Form.Item>
                                     <span className="text-gray-300"><Minus /></span>
                                     <Form.Item name="panen_mt_2" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
+                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
                                     </Form.Item>
                                 </div>
                             </div>
@@ -906,11 +908,11 @@ export default function Collaborator() {
                             <div className="mx-4 mt-2">
                                 <div className="flex items-center space-x-2 w-full">
                                     <Form.Item name="tanam_mt_3" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
+                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
                                     </Form.Item>
                                     <span className="text-gray-300"><Minus /></span>
                                     <Form.Item name="panen_mt_3" className="w-full">
-                                        <DatePicker className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
+                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
                                     </Form.Item>
                                 </div>
                             </div>
