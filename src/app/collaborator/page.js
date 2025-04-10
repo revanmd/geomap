@@ -225,7 +225,7 @@ export default function Collaborator() {
 
     const resetSurvey = () => {
         if (event == "survey") {
-            mapFunctions.removeMarkerAdd()
+            mapFunctions?.removeMarkerAdd()
         }
         setDataHistory()
         setSurveyHST()
