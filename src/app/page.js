@@ -63,6 +63,8 @@ export default function Home() {
     };
 
     checkAuth();
+
+
   }, []);
 
   // Show loading state while checking authentication
