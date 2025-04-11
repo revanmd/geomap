@@ -1,11 +1,12 @@
-import { cookies } from "next/headers";
+import { cookies } from 'next/headers';
 
 export async function GET() {
   const cookieStore = cookies();
-  cookieStore.set("auth_token", "", {
-    path: "/",
-    expires: new Date(0), 
-  });
+  
+  // Example: Delete a specific cookie
+  cookieStore.delete('auth_token');
 
-  return new Response(JSON.stringify({ message: "Cleared" }), { status: 200 });
+  return new Response(JSON.stringify({ message: 'Cleared' }), {
+    status: 200,
+  });
 }
