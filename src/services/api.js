@@ -1,5 +1,5 @@
 import axios from "axios";
-import Router from "next/router";
+import { authService } from "./authService";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL; // Ensure the correct backend URL
 
@@ -20,7 +20,9 @@ api.interceptors.response.use(
 
         const clearAuth = async () => {
           try {
+            
             await fetch("/api/auth/clear");
+            await authService.logout()
           } catch (error) {
             console.error("Auth clear failed", error);
           } 
@@ -28,7 +30,7 @@ api.interceptors.response.use(
         clearAuth()
         setTimeout(()=>{
           window.location.href = "/";
-        },500)
+        },1000)
       }
     }
     return Promise.reject(error);

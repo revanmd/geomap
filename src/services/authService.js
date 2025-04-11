@@ -15,7 +15,7 @@ export const authService = {
 
   logout: async () => {
     try {
-      await api.delete("/api/users/_logout", {}, { withCredentials: true });
+      await api.delete("/api/users/_logout");
     } catch (error) {
       console.error("Logout failed", error);
     }
