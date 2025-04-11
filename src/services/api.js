@@ -20,7 +20,7 @@ api.interceptors.response.use(
 
         const clearAuth = async () => {
           try {
-            await fetch("/api/auth/clear", { credentials: "include" });
+            await fetch("/api/auth/clear");
           } catch (error) {
             console.error("Auth clear failed", error);
           } 
