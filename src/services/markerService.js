@@ -71,4 +71,22 @@ export const markerService = {
       throw error.response?.data || { message: "Failed to get summary" };
     }
   },
+
+  summary: async () => {
+    try {
+      const response = await api.get(`/api/markers/_summary`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to get summary" };
+    }
+  },
+
+  checkRadius: async (radiusData) => {
+    try {
+      const response = await api.post(`/api/markers/_check-radius`, radiusData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Failed to get summary" };
+    }
+  },
 };

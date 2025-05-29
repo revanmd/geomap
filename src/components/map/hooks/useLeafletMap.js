@@ -5,6 +5,7 @@ import "leaflet/dist/leaflet.css";
 import { IsPointInRadius } from "../helper";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon } from "@/components/icon";
+import { markerService } from "@/services/markerService";
 
 export default function useLeafletMap({
   event,
@@ -37,7 +38,7 @@ export default function useLeafletMap({
 
   const [markerData, setMarkerData] = useState([]); // State to track all markers
 
-  const [currentBaseMap, setCurrentBaseMap] = useState("road");
+  const [currentBaseMap, setCurrentBaseMap] = useState("hybrid");
   const [currentDataMap, setCurrentDataMap] = useState("none");
 
   const baseMapOptions = {
@@ -64,39 +65,59 @@ export default function useLeafletMap({
     markerLayerRef.current = L.layerGroup().addTo(instance.current);
 
     if (onPressMap) {
-      instance.current.on("contextmenu", (event) => {
+      instance.current.on("contextmenu", async (event) => {
         const { lat, lng } = event.latlng;
-        //mapInstanceRef.current.setView(event.latlng);
 
         if (GPSCenterRef.current && eventRef.current == "survey") {
           if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 200)) {
-            if (markerAddRef.current) {
-              mapInstanceRef.current.removeLayer(markerAddRef.current);
+            try {
+              const radiusData = {
+                lat: lat,
+                lon: lng,
+                radius_km: 0.1
+              };
+              
+              const response = await markerService.checkRadius(radiusData);
+              if (response.data === true) {
+                showMessage(
+                  "Tidak diperbolehkan menambahkan titik karena berada pada radius titik lain",
+                  <CancleIcon />
+                );
+                mapInstanceRef.current.setView(event.latlng);
+                return;
+              }
+
+              if (markerAddRef.current) {
+                mapInstanceRef.current.removeLayer(markerAddRef.current);
+              }
+              markerAddRef.current = L.marker(event.latlng, {
+                icon: L.icon({
+                  iconUrl: "/marker-add.png",
+                  iconSize: [32, 38],
+                }),
+              }).addTo(mapInstanceRef.current);
+              onPressMap({ lat, lng });
+            } catch (error) {
+              console.error("Error checking radius:", error);
+              showMessage(
+                "Terjadi kesalahan saat memeriksa radius",
+                <CancleIcon />
+              );
             }
-            markerAddRef.current = L.marker(event.latlng, {
-              icon: L.icon({
-                iconUrl: "/marker-add.png",
-                iconSize: [32, 38],
-              }),
-            }).addTo(mapInstanceRef.current);
-            onPressMap({ lat, lng });
           } else {
             showMessage(
               "Titik yang dipilih berada di luar radius area Anda. Silakan pilih titik di dalam area atau dekati lokasi komoditas",
               <CancleIcon />
             )
             mapInstanceRef.current.setView(event.latlng);
-            MarkerCenterRef
           }
         } else {
           mapInstanceRef.current.setView(event.latlng);
         }
-
-
       });
     }
   };
-
+ 
   const _destroy = (instance) => {
     if (instance.current) {
       instance.current.eachLayer((layer) => instance.current.removeLayer(layer));
