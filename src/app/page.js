@@ -32,6 +32,8 @@ export default function Home() {
       if (response) {
         if (typeof window != "undefined") {
           localStorage.setItem("username", response.data.username)
+          localStorage.setItem("user_type", response.data.user_type)
+          localStorage.setItem("user_region_code", response.data.user_region_code)
         }
 
         message.success("Berhasil login")

@@ -24,7 +24,7 @@ export default function Map({
   const { showLoading, hideLoading } = useLoading();
 
   const [zoom, setZoom] = useState(11)
-  const [isActiveGPS, setIsActiveGPS] = useState(!gps)
+  const [isActiveGPS, setIsActiveGPS] = useState(true)
 
 
   const {
@@ -63,11 +63,13 @@ export default function Map({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
           }, 200, 17);
+          localStorage.setItem("gps_location", "allowed")
           setIsActiveGPS(true);
           hideLoading();
         },
         (error) => {
           console.error("Geolocation error:", error.message);
+          localStorage.setItem("gps_location", "not-allowed")
           setIsActiveGPS(false);
           hideLoading();
         },
@@ -98,6 +100,12 @@ export default function Map({
         initializeMarkers,
         onGeolocationUpdate,
       });
+
+      if (localStorage.getItem("gps_location") === "allowed") {
+        onGeolocationUpdate()
+      }else{
+        setIsActiveGPS(false)
+      }
     }
   }, [])
 

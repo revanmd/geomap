@@ -235,6 +235,11 @@ export default function Collaborator() {
     }
 
     const finishSurvey = async () => {
+        if (userType === "agronomist" && !surveyHST) {
+            showMessage("HST wajib diisi untuk Agronomist", <CancleIcon />)
+            return;
+        }
+
         showLoading("Mohon tunggu ...")
         // handle send the request
         try {
@@ -367,6 +372,7 @@ export default function Collaborator() {
     /// NAVIGATION
 
     const [username, setUsername] = useState("")
+    const [userType, setUserType] = useState("")
 
     const handleMenuSurvey = () => {
         showLoading("Mohon tunggu..")
@@ -483,7 +489,10 @@ export default function Collaborator() {
     useEffect(() => {
         if (typeof window != "undefined") {
             let username = localStorage.getItem("username")
+            let userType = localStorage.getItem("user_type").toLocaleLowerCase()
+
             setUsername(username)
+            setUserType(userType)
 
             let navigation = new URLSearchParams(window.location.search);
             if (navigation.get("navigation") == "summary") {
@@ -738,7 +747,10 @@ export default function Collaborator() {
                             </div>
                         </div>
 
-                        <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam <span className="font-light text-gray-500"> (Opsional)</span></h2>
+                        <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam 
+                            {userType !== "agronomist" && <span className="font-light text-gray-500"> (Opsional)</span>}
+                            {userType === "agronomist" && <span className="font-semibold text-red-600"> *</span>}
+                        </h2>
                         <div className="mx-4 mt-2">
                             <Input className="input-custom" placeholder="Masukkan HST"
                                 value={surveyHST}
@@ -747,6 +759,7 @@ export default function Collaborator() {
                                 pattern="[0-9]*"
                                 type="tel"
                                 onKeyPress={handleKeyPress}
+                                required={userType === "agronomist"}
                             ></Input>
                         </div>
 
