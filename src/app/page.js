@@ -1,6 +1,7 @@
 "use client"
 
 import { useLoading } from "@/context/loadingContext";
+import { useUser } from "@/context/userContext";
 import { authService } from "@/services/authService";
 import { Col, Form, Image, Input, message, Row } from "antd";
 import { useRouter } from "next/navigation";
@@ -8,12 +9,12 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
   const { showLoading, hideLoading } = useLoading();
+  const { setUser, isAuthenticated, loading } = useUser();
 
   const router = useRouter()
   const [FormLogin] = Form.useForm()
 
   const [isFilled, setIsFilled] = useState(false)
-  const [isChecking, setIsChecking] = useState(true);
 
   const handleChangeFields = () => {
     const values = FormLogin.getFieldsValue()
@@ -29,48 +30,60 @@ export default function Home() {
     const values = FormLogin.getFieldsValue()
     try {
       const response = await authService.login(values.username, values.password);
-      if (response) {
-        if (typeof window != "undefined") {
-          localStorage.setItem("username", response.data.username)
-          localStorage.setItem("user_type", response.data.user_type)
-          localStorage.setItem("user_region_code", response.data.user_region_code)
-        }
+      if (response?.data) {
+        // Use UserContext to set user data
+        setUser(response.data)
 
         message.success("Berhasil login")
-        router.push("/collaborator")
+        
+        // Use replace instead of push to prevent back navigation to login
+        showLoading("Redirecting...")
+        router.replace("/collaborator")
       } else {
         message.error("Username atau password salah")
+        hideLoading()
       }
 
     } catch (err) {
+      console.error("Login error:", err);
       message.error("Terdapat kesalahan pada server")
-    } finally {
       hideLoading()
     }
-
+    // Note: Don't hide loading here if login was successful, 
+    // let the redirect handle the loading state
   }
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch("/api/auth/check", { credentials: "include" });
-        if (response.ok) {
-          router.push("/collaborator"); // Redirect if already logged in
-        }
-      } catch (error) {
-        console.error("Auth check failed", error);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkAuth();
-
-
-  }, []);
+    // Redirect if already authenticated
+    if (!loading && isAuthenticated) {
+      showLoading("Redirecting...");
+      router.replace("/collaborator");
+    }
+  }, [isAuthenticated, loading, router, showLoading]);
 
   // Show loading state while checking authentication
-  if (isChecking) return <p>Loading...</p>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if user is authenticated (prevent flash)
+  if (isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
 
   return (
@@ -161,11 +174,7 @@ export default function Home() {
             width: '100%'
           }} />
         </Col>
-
       </Row>
-
-
-
     </main>
   );
 }

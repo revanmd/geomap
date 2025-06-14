@@ -49,8 +49,53 @@ export default function useLeafletMap({
 
   const dataMapOptions = {
     none: null, // No base map
-    dds: "https://tile.digitalisasi-pi.com/data/jatim_ds/{z}/{x}/{y}.png",
-    ifri: "https://tile.digitalisasi-pi.com/data/jatim_ifri/{z}/{x}/{y}.png",
+    dds: [
+      {
+        url: "https://tile.digitalisasi-pi.com/data/jatim_ds/{z}/{x}/{y}.png",
+        bounds: [[-8.7806, 110.8890], [-6.7157, 114.7012]], // East Java bounds
+        name: "Jawa Timur"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_jateng/{z}/{x}/{y}.png",
+        bounds: [[-8.3017, 108.6571], [-5.7224, 111.7024]], // Central Java bounds
+        name: "Jawa Tengah"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_lampung1/{z}/{x}/{y}.png",
+        bounds: [[-6.1474, 103.6351], [-3.7294, 106.0283]], // Lampung bounds
+        name: "Lampung"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_ntb7/{z}/{x}/{y}.png",
+        bounds: [[-9.6668, 115.7472], [-8.0757, 119.3413]], // NTB bounds
+        name: "Nusa Tenggara Barat"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_sumsel1/{z}/{x}/{y}.png",
+        bounds: [[-4.9209, 101.8713], [-1.6263, 106.2158]], // South Sumatra bounds
+        name: "Sumatera Selatan"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_sulsel1/{z}/{x}/{y}.png",
+        bounds: [[-7.0184, 115.8217], [-0.8676, 120.9817]], // South Sulawesi bounds
+        name: "Sulawesi Selatan"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_jatim/{z}/{x}/{y}.png",
+        bounds: [[-8.7806, 110.8890], [-6.7157, 114.7012]], // East Java bounds
+        name: "Jawa Timur"
+      },
+      {
+        url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_jabar/{z}/{x}/{y}.png",
+        bounds: [[-7.8178, 106.3714], [-5.9023, 108.8403]], // West Java bounds
+        name: "Jawa Barat"
+      }
+    ],
+    ifri: {
+      url: "https://tile.digitalisasi-pi.com/data/jatim_ifri/{z}/{x}/{y}.png",
+      bounds: [[-8.7806, 110.8890], [-6.7157, 114.7012]], // East Java bounds
+      name: "IFRI Jawa Timur"
+    }
   };
 
   const _initialize = (container, instance) => {
@@ -240,19 +285,45 @@ export default function useLeafletMap({
   const setDataMap = useCallback((newDataMap, opacity = 0.5) => {
     if (!mapInstanceRef.current) return;
 
-    // Remove existing data layer
+    // Remove existing data layers
     if (dataLayerRef.current) {
-      mapInstanceRef.current.removeLayer(dataLayerRef.current);
+      if (Array.isArray(dataLayerRef.current)) {
+        dataLayerRef.current.forEach(layer => {
+          if (layer) mapInstanceRef.current.removeLayer(layer);
+        });
+      } else if (dataLayerRef.current) {
+        mapInstanceRef.current.removeLayer(dataLayerRef.current);
+      }
       dataLayerRef.current = null;
     }
 
-    // Add new data layer if not "none"
-    if (dataMapOptions[newDataMap] && newDataMap !== "none") {
-      dataLayerRef.current = L.tileLayer(dataMapOptions[newDataMap], {
-        opacity,
-        maxZoom: 18,
-        maxNativeZoom: 17
-      }).addTo(mapInstanceRef.current);
+    // Add new data layer(s)
+    if (dataMapOptions[newDataMap]) {
+      if (Array.isArray(dataMapOptions[newDataMap])) {
+        // Handle multiple layers for DDS
+        dataLayerRef.current = dataMapOptions[newDataMap].map(layerConfig => {
+          const layer = L.tileLayer(layerConfig.url, {
+            opacity,
+            maxZoom: 18,
+            maxNativeZoom: 15,
+            bounds: L.latLngBounds(layerConfig.bounds)
+          });
+          
+          // Add the layer to the map
+          layer.addTo(mapInstanceRef.current);
+          
+          return layer;
+        });
+      } else if (newDataMap !== "none") {
+        // Handle single layer for other options
+        const layerConfig = dataMapOptions[newDataMap];
+        dataLayerRef.current = L.tileLayer(layerConfig.url, {
+          opacity,
+          maxZoom: 18,
+          maxNativeZoom: 15,
+          bounds: L.latLngBounds(layerConfig.bounds)
+        }).addTo(mapInstanceRef.current);
+      }
     }
 
     setCurrentDataMap(newDataMap);

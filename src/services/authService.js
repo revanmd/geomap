@@ -1,3 +1,4 @@
+import axios from "axios";
 import api from "./api";
 
 export const authService = {
@@ -18,6 +19,24 @@ export const authService = {
       await api.delete("/api/users/_logout");
     } catch (error) {
       console.error("Logout failed", error);
+    }
+  },
+
+  getUser: async () => {
+    try {
+      const response = await api.patch("/api/users/_current");
+      return response.data; 
+    } catch (error) {
+      return null; 
+    }
+  },
+
+  getUserByCookie: async () => {
+    try {
+      const response = await axios.get("api/auth/getUser");
+      return response.data; 
+    } catch (error) {
+      return null; 
     }
   },
 

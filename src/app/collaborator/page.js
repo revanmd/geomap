@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DatePicker, Drawer, Form, Input, Modal, Select } from "antd";
 import { useMessage } from "@/context/messageContext";
+import { useUser } from "@/context/userContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
@@ -15,11 +16,22 @@ import { CapitalizeFirstLetter, ConvertCommodityTypeToIndonesianCommodity, Conve
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 
+// Custom hooks
+import useMapInteraction from "@/hooks/useMapInteraction";
+
+// Components
+import CameraCapture from "@/components/collaborator/CameraCapture";
+import CommoditySelector from "@/components/collaborator/CommoditySelector";
+import PlantingHistoryForm from "@/components/collaborator/PlantingHistoryForm";
+import MarkerDetail from "@/components/collaborator/MarkerDetail";
+import SummaryStats from "@/components/collaborator/SummaryStats";
+import NavigationBar from "@/components/collaborator/NavigationBar";
+import SurveyDrawer from "@/components/collaborator/SurveyDrawer";
+
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
     ssr: false,
 });
-
 
 export default function Collaborator() {
     const router = useRouter()
@@ -28,7 +40,10 @@ export default function Collaborator() {
     // CONTEXT
     const { showMessage } = useMessage()
     const { showLoading, hideLoading } = useLoading();
+    const { username, userType } = useUser();
 
+    // Custom hooks
+    const mapInteraction = useMapInteraction()
 
     ////////////////////////////////
     // PROPS DRILLDOWN
@@ -38,7 +53,7 @@ export default function Collaborator() {
     }
 
     // form-filling, detail, tagging
-    const [event, setEvent] = useState('survey')
+    const [event, setEvent] = useState('view')
     const [surveyStep, setSurveyStep] = useState(0)
     const [screen, setScreen] = useState('minimize')
 
@@ -148,7 +163,7 @@ export default function Collaborator() {
             }
 
             if (event == "summary") {
-                fetchSelfMarker()
+                mapInteraction.fetchSelfMarkers()
             }
 
             setIsEditOpen(false)
@@ -174,7 +189,7 @@ export default function Collaborator() {
             await markerService.deleteMarker(markerDetail?.id);
             mapFunctions.removeMarker(markerDetail?.id)
             if (event == "summary") {
-                fetchSelfMarker()
+                mapInteraction.fetchSelfMarkers()
             }
 
             showMessage("Berhasil menghapus komoditas", <ChecklistIcon />, event)
@@ -371,36 +386,63 @@ export default function Collaborator() {
     ////////////////////////////////
     /// NAVIGATION
 
-    const [username, setUsername] = useState("")
-    const [userType, setUserType] = useState("")
+    const handleMenuSurvey = async () => {
+        showLoading("Mohon tunggu..");
+        try {
+            await mapInteraction.fetchMarkers();
+            setEvent("view");
+        } catch (error) {
+            console.error('Error fetching markers:', error);
+        } finally {
+            hideLoading();
+        }
+    };
 
-    const handleMenuSurvey = () => {
-        showLoading("Mohon tunggu..")
-        setTimeout(() => {
-            fetchMarker()
-            setEvent("view")
-            hideLoading()
-        }, 3000)
+    const handleMenuSummary = async () => {
+        showLoading("Mohon tunggu..");
+        try {
+            const summaryData = await markerService.summary();
+            setSummary(summaryData.data);
+            await mapInteraction.fetchSelfMarkers();
+            setEvent("summary");
+        } catch (error) {
+            console.error('Error fetching summary:', error);
+        } finally {
+            hideLoading();
+        }
+    };
 
+    const handleMenuAccount = async () => {
+        try {
+            showLoading("Mohon tunggu..");
+            // Use replace instead of push to prevent back navigation
+            await router.replace("/account");
+        } catch (error) {
+            console.error('Error navigating to account:', error);
+            showMessage("Gagal membuka halaman akun", <CancleIcon />);
+        } finally {
+            // Hide loading after a short delay to ensure smooth transition
+            setTimeout(() => {
+                hideLoading();
+            }, 500);
+        }
+    };
 
-    }
-    const handleMenuSummary = () => {
-        showLoading("Mohon tunggu..")
-        setTimeout(() => {
-            fetchSelfMarker()
-            setEvent("summary")
-            hideLoading()
-        }, 3000)
-
-    }
-    const handleMenuAccount = () => {
-        showLoading("Mohon tunggu..")
-        setTimeout(() => {
-            router.push("/account")
-            hideLoading()
-        }, 1000)
-    }
-
+    const handleNavigate = (view) => {
+        if (event === view) return; // Don't reload if already on the same view
+        
+        switch(view) {
+            case 'view':
+                handleMenuSurvey();
+                break;
+            case 'summary':
+                handleMenuSummary();
+                break;
+            case 'account':
+                handleMenuAccount();
+                break;
+        }
+    };
 
     ////////////////////////////////////////////////////////////////
     /// HISTORY TANAM
@@ -485,14 +527,19 @@ export default function Collaborator() {
         }
     }
 
+    ////////////////////////////////////////////////////////////////
+    //// LEADERBOARD
+    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
+
 
     useEffect(() => {
         if (typeof window != "undefined") {
-            let username = localStorage.getItem("username")
-            let userType = localStorage.getItem("user_type").toLocaleLowerCase()
+            let leaderboard = localStorage.getItem("leaderboard")
+            let gpsLocation = localStorage.getItem("gps_location")
 
-            setUsername(username)
-            setUserType(userType)
+            // if ((leaderboard == "" || leaderboard == null || leaderboard == undefined) && gpsLocation == "allowed") {
+            //     setIsLeaderboardOpen(true)
+            // }
 
             let navigation = new URLSearchParams(window.location.search);
             if (navigation.get("navigation") == "summary") {
@@ -500,7 +547,6 @@ export default function Collaborator() {
                 setEvent("summary");
             } else {
                 setEvent("view");
-
             }
         }
     }, [])
@@ -515,6 +561,25 @@ export default function Collaborator() {
 
 
 
+    const leaderboards = [
+        { "no": 1, "nama": "Sumanto", "point": 110 },
+        { "no": 2, "nama": "Cut Nyak Dien", "point": 110 },
+        { "no": 3, "nama": "Soedirman", "point": 110 },
+        { "no": 4, "nama": "Hatta", "point": 110 },
+        { "no": 5, "nama": "Raden Dewi", "point": 110 },
+        { "no": 6, "nama": "Cipto Mangunkusumo", "point": 110 },
+        { "no": 7, "nama": "Imam", "point": 110 },
+        { "no": 8, "nama": "Achmad Yani", "point": 110 },
+        { "no": 9, "nama": "Dewi Santika", "point": 110 },
+        { "no": 10, "nama": "Kartika", "point": 110 },
+    ]
+
+    // Add cleanup effect
+    useEffect(() => {
+        return () => {
+            hideLoading();
+        };
+    }, [hideLoading]);
 
     return (
         <main>
@@ -526,7 +591,6 @@ export default function Collaborator() {
                 onMapReady={handleMapReady}
             />
 
-
             {
                 event == "summary" && (
                     <div
@@ -534,7 +598,6 @@ export default function Collaborator() {
                             position: 'absolute',
                             top: 0,
                             zIndex: 999,
-
                         }}
                         className="bg-white pt-16 w-full pb-3 overflow-hidden"
                     >
@@ -585,9 +648,15 @@ export default function Collaborator() {
                                     >
                                         <div className="glass-effect w-screen px-3 py-3">
                                             <button
-                                                onClick={clickedAddMarker}
+                                                onClick={() => {
+                                                    mapInteraction.updateGeolocation();
+                                                    setEvent('survey');
+                                                    setSurveyStep(0);
+                                                }}
                                                 className="w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
-                                            >+ Tambahkan Penanda</button>
+                                            >
+                                                + Tambahkan Penanda
+                                            </button>
                                         </div>
                                     </motion.div>
                                 </AnimatePresence>
@@ -596,30 +665,10 @@ export default function Collaborator() {
                             )
                         }
 
-                        <div className="relative w-screen justify-around py-3 flex border bg-white">
-                            <div className={`flex flex-col items-center font-medium 
-                                    ${event != "summary" ? "text-blue" : "text-gray-500"
-                                }`}
-                                onClick={handleMenuSurvey}
-                            >
-                                <Map size={22} />
-                                <span className="text-xs mt-1">Jelajah</span>
-                            </div>
-                            <div className={`flex flex-col items-center font-medium 
-                                    ${event == "summary" ? "text-blue" : "text-gray-500"
-                                }`}
-                                onClick={handleMenuSummary}
-                            >
-                                <SquareMenu size={22} />
-                                <span className="text-xs mt-1">Data Survey</span>
-                            </div>
-                            <div className="flex flex-col items-center text-gray-500"
-                                onClick={handleMenuAccount}
-                            >
-                                <CircleUserRound size={22} />
-                                <span className="text-xs mt-1">Akun</span>
-                            </div>
-                        </div>
+                        <NavigationBar 
+                            currentView={event}
+                            onNavigate={handleNavigate}
+                        />
 
                     </div>
                 )
@@ -669,658 +718,65 @@ export default function Collaborator() {
                 )
             }
 
-            {
-                (event == "survey" && surveyStep == 1) && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            zIndex: 9999,
-                            transform: 'translateY(0)', // Start at normal position
-                            transition: 'transform 0.2s ease-out' // Add smooth transition
-                        }}
-                        className="bg-white w-screen animate-slide-up"
-                    >
-                        <div className="flex justify-between items-center px-4 pt-4">
-                            <h1 className="text-base font-semibold text-black">Tandai dengan komoditas</h1>
-                            <h1 className="text-xs font-semibold text-black"
-                                onClick={handleBackSurvey}
-                            >
-                                <X />
-                            </h1>
-                        </div>
-
-                        <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Pilih Komoditas</h2>
-                        <div className="text-center w-full flex justify-around px-3 mt-2">
-                            <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3 
-                                ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
-                                    }`}
-                                onClick={() => {
-                                    clickedCommodity("padi")
-                                }}
-                            >
-                                <img src="/padi.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-xs mt-1.5">
-                                    Padi
-                                </div>
-                            </div>
-                            <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3
-                                ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
-                                    }`}
-                                onClick={() => {
-                                    clickedCommodity("jagung")
-                                }}
-                            >
-                                <img src="/jagung.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-xs mt-1.5">
-                                    Jagung
-                                </div>
-                            </div>
-                            <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3
-                                ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
-                                    }`}
-                                onClick={() => {
-                                    clickedCommodity("tebu")
-                                }}
-                            >
-                                <img src="/tebu.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-xs mt-1.5">
-                                    Tebu
-                                </div>
-                            </div>
-                            <div style={{ width: '70px' }}
-                                className={`border rounded text-center mx-2 py-3
-                                ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
-                                    }`}
-                                onClick={() => {
-                                    clickedCommodity("other")
-                                }}
-                            >
-                                <img src="/other.png" className="icon-commodity ml-auto mr-auto"></img>
-                                <div className="font-semibold text-xs mt-1.5">
-                                    Lainnya
-                                </div>
-                            </div>
-                        </div>
-
-                        <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam 
-                            {userType !== "agronomist" && <span className="font-light text-gray-500"> (Opsional)</span>}
-                            {userType === "agronomist" && <span className="font-semibold text-red-600"> *</span>}
-                        </h2>
-                        <div className="mx-4 mt-2">
-                            <Input className="input-custom" placeholder="Masukkan HST"
-                                value={surveyHST}
-                                onChange={onChangeHST}
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                type="tel"
-                                onKeyPress={handleKeyPress}
-                                required={userType === "agronomist"}
-                            ></Input>
-                        </div>
-
-
-                        <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Foto komoditas</h2>
-                        <div className="px-4 mt-2">
-                            <div className="image-commodity-container-empty border border-gray-300 rounded "
-                                onClick={handleSurveyPhoto}
-                            >
-
-                                {capturedImage && (
-                                    <>
-                                        <img src={uploadedImage} className="image-commodity-container rounded" />
-                                        {/* Overlay for darkening effect */}
-                                        <div className="absolute inset-0 bg-black opacity-50"></div>
-                                    </>
-                                )}
-
-                                {/* Centered content */}
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
-                                    <div className={capturedImage ? "text-white" : "text-gray-500"}>
-                                        <Camera className="block w-full" size={16} />
-                                        <div className="mt-1 text-center">
-                                            {capturedImage ? "Ganti Foto" : "Tambah foto komoditas"}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-
-                        {
-                            dataHistory && (
-                                <div className="px-4 text-sm ">
-                                    <h2 className="mt-4 font-medium">History Tanam</h2>
-                                    {
-                                        dataHistory.commodity_mt_1 && (
-                                            <div className="flex justify-between mt-2">
-                                                <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_1)}</span>
-                                                <span className="font-semibold">
-                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_1)}
-                                                    &nbsp;-&nbsp;
-                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_1)}
-                                                </span>
-                                            </div>
-                                        )
-                                    }
-                                    {
-                                        dataHistory.commodity_mt_2 && (
-                                            <div className="flex justify-between mt-2">
-                                                <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_2)}</span>
-                                                <span className="font-semibold">
-                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_2)}
-                                                    &nbsp;-&nbsp;
-                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_2)}
-                                                </span>
-                                            </div>
-                                        )
-                                    }
-                                    {
-                                        dataHistory.commodity_mt_3 && (
-                                            <div className="flex justify-between mt-2">
-                                                <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_3)}</span>
-                                                <span className="font-semibold">
-                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_3)}
-                                                    &nbsp;-&nbsp;
-                                                    {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_3)}
-                                                </span>
-                                            </div>
-                                        )
-                                    }
-                                </div>
-                            )
-                        }
-
-
-                        <div className="mx-4">
-                            <div
-                                className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded ${(surveyCommodity != "") && capturedImage ? 'bg-blue' : 'bg-blue-200'}`}
-                                disabled={(surveyCommodity != "") && capturedImage ? false : true}
-                                onClick={finishSurvey}
-                            >
-                                Simpan Komoditas
-                            </div>
-                            <div
-                                className={`mb-4 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
-                                disabled={surveyCommodity != "" ? false : true}
-                                onClick={onOpenHistory}
-                            >
-                                + Tambah Histori Tanam
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
-
-            {
-                isHistoryOpen && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            zIndex: 99999,
-                            transform: 'translateY(0)', // Start at normal position
-                            transition: 'transform 0.2s ease-out' // Add smooth transition
-                        }}
-                        className="bg-white w-screen animate-slide-up"
-                    >
-                        <div className="flex justify-between items-center px-4 pt-4">
-                            <div>
-                                <h1 className="text-base font-semibold text-black">Histori Tanam</h1>
-                                <h2 className="mt-1 text-xs text-gray-500">Data ini bersifat opsional</h2>
-                            </div>
-                            <h1 className="text-xs font-semibold text-black"
-                                onClick={onCloseHistory}
-                            >
-                                <X />
-                            </h1>
-                        </div>
-
-                        <Form form={FormHistory} className="form-custom-margin">
-                            <h2 className="text-sm mt-4 px-4 font-medium">Periode 1 <span className="font-light text-gray-500"> (Opsional)</span></h2>
-                            <div className="mx-4 mt-2">
-                                <Form.Item
-                                    name="commodity_mt_1"
-                                >
-                                    <Select allowClear options={optionCommodity} className="Pilih komoditas w-full p-3-f" placeholder="Pilih komoditas"></Select>
-                                </Form.Item>
-                            </div>
-
-                            <div className="mx-4 mt-2">
-                                <div className="flex items-center space-x-2 w-full">
-                                    <Form.Item name="tanam_mt_1" className="w-full">
-                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
-                                    </Form.Item>
-                                    <span className="text-gray-300"><Minus /></span>
-                                    <Form.Item name="panen_mt_1" className="w-full">
-                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
-                                    </Form.Item>
-                                </div>
-                            </div>
-
-                            <h2 className="text-sm mt-4 px-4 font-medium">Periode 2 <span className="font-light text-gray-500"> (Opsional)</span></h2>
-                            <div className="mx-4 mt-2">
-                                <Form.Item
-                                    name="commodity_mt_2"
-                                >
-                                    <Select allowClear options={optionCommodity} className="Pilih komoditas w-full p-3-f" placeholder="Pilih komoditas"></Select>
-                                </Form.Item>
-                            </div>
-
-                            <div className="mx-4 mt-2">
-                                <div className="flex items-center space-x-2 w-full">
-                                    <Form.Item name="tanam_mt_2" className="w-full">
-                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
-                                    </Form.Item>
-                                    <span className="text-gray-300"><Minus /></span>
-                                    <Form.Item name="panen_mt_2" className="w-full">
-                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
-                                    </Form.Item>
-                                </div>
-                            </div>
-
-                            <h2 className="text-sm mt-4 px-4 font-medium">Periode 3 <span className="font-light text-gray-500"> (Opsional)</span></h2>
-                            <div className="mx-4 mt-2">
-                                <Form.Item
-                                    name="commodity_mt_3"
-                                >
-                                    <Select allowClear options={optionCommodity} className="Pilih komoditas w-full p-3-f" placeholder="Pilih komoditas"></Select>
-                                </Form.Item>
-                            </div>
-
-                            <div className="mx-4 mt-2">
-                                <div className="flex items-center space-x-2 w-full">
-                                    <Form.Item name="tanam_mt_3" className="w-full">
-                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu tanam" />
-                                    </Form.Item>
-                                    <span className="text-gray-300"><Minus /></span>
-                                    <Form.Item name="panen_mt_3" className="w-full">
-                                        <DatePicker inputReadOnly className="w-full p-3-f" picker="month" placeholder="Waktu panen" />
-                                    </Form.Item>
-                                </div>
-                            </div>
-
-                            <div className="mx-4 mt-5">
-                                <button
-                                    className={`w-full font-semibold text-white text-center text-sm py-2 rounded bg-blue`}
-                                    onClick={handleFinishHistory}
-                                >
-                                    Simpan Histori Tanam
-                                </button>
-                                <div
-                                    className={`mb-3 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
-                                    onClick={onCloseHistory}
-                                >
-                                    Kembali
-                                </div>
-                            </div>
-                        </Form>
-                    </div>
-                )
-            }
-
-
-            {
-                isWebcamActive && (
-                    <div className="w-screen h-[100dvh] bg-black absolute top-0"
-                        style={{
-                            zIndex: 9999999
-                        }}
-                    >
-                        <Webcam
-                            ref={webcamRef}
-                            audio={false}
-                            screenshotFormat="image/jpeg"
-                            videoConstraints={videoConstraints}
-                            style={{
-                                height: "100dvh",
-                                width: "100vw", // Ensures it scales properly
-                                objectFit: "cover", // Helps maintain aspect ratio
-                                zIndex: 9999999
-                            }}
-                        >
-                        </Webcam>
-
-                        {
-                            capturedImage && (
-                                <img src={capturedImage} alt="Captured" className="absolute top-0 h-[100dvh] w-screen" />
-                            )
-                        }
-
-                        {
-                            capturedImage && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                    }}
-                                    className="w-screen bg-white py-3"
-                                >
-                                    <div
-                                        className={`text-sm font-semibold text-white text-center text-sm p-2 mx-6 rounded bg-blue cursor-pointer mb-3`}
-                                        onClick={handleWebcamCaptured}
-                                    >
-                                        Simpan Foto
-                                    </div>
-                                    <div
-                                        className={`text-sm border border-gray-300  font-semibold text-center text-sm p-2 mx-6 rounded cursor-pointer`}
-                                        onClick={() => {
-                                            setCapturedImage("")
-                                        }}
-                                    >
-                                        Ambil ulang foto
-                                    </div>
-
-                                </div>
-                            )
-                        }
-
-
-
-                        {
-                            capturedImage == "" && (
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        bottom: 0,
-                                        left: 0,
-                                    }}
-                                    className="w-screen bg-white"
-                                >
-                                    <div
-                                        className={`text-sm mb-3 border border-gray-300 font-semibold text-white text-center text-sm p-2 my-3 mx-6 rounded bg-blue cursor-pointer`}
-                                        disabled={surveyCommodity != "" ? false : true}
-                                        onClick={captureWebcam}
-                                    >
-                                        Ambil Foto
-                                    </div>
-                                </div>
-                            )
-                        }
-                    </div>
-                )
-            }
-
-            <Drawer
-                open={isDetailOpen}
-                placement="bottom"
-                zIndex={999999}
-                height={530}
-                className="drawer-body-modified rounded-xl"
-                closeIcon={false}
-            >
-                <div className="">
-                    <div className="flex justify-between items-center pt-3 px-4">
-                        <div>
-                            <h1 className="text-base font-semibold text-black">{CapitalizeFirstLetter(markerDetail?.commodity)}</h1>
-                            <h2 className="text-xs text-gray-500">Ditambahkan {ConvertIsoToIndonesianDate(markerDetail?.updated_at)}</h2>
-                        </div>
-                        <h1 className="text-lg font-semibold text-black"
-                            onClick={onCloseDetail}
-                        >
-                            <X />
-                        </h1>
-                    </div>
-
-                    <div className="mt-4 px-4">
-                        <img src={uploadedImage} className="image-commodity rounded"></img>
-                    </div>
-
-                    <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam</h2>
-                    <div className="mx-4 mt-2">
-                        <h2 className="text-base">{markerDetail?.hst}</h2>
-                    </div>
-
-
-                    {
-                        markerDetail?.planting_history && (
-                            <div className="px-4 text-sm ">
-                                <h2 className="mt-4 font-medium">History Tanam</h2>
-                                {
-                                    markerDetail?.planting_history?.commodity_mt_1 && (
-                                        <div className="flex justify-between mt-2">
-                                            <span>{ConvertCommodityTypeToIndonesianCommodity(markerDetail?.planting_history?.commodity_mt_1)}</span>
-                                            <span className="font-semibold">
-                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.tanam_mt_1)}
-                                                &nbsp;-&nbsp;
-                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.panen_mt_1)}
-                                            </span>
-                                        </div>
-                                    )
-                                }
-                                {
-                                    markerDetail?.planting_history?.commodity_mt_2 && (
-                                        <div className="flex justify-between mt-2">
-                                            <span>{ConvertCommodityTypeToIndonesianCommodity(markerDetail?.planting_history?.commodity_mt_2)}</span>
-                                            <span className="font-semibold">
-                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.tanam_mt_2)}
-                                                &nbsp;-&nbsp;
-                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.panen_mt_2)}
-                                            </span>
-                                        </div>
-                                    )
-                                }
-                                {
-                                    markerDetail?.planting_history?.commodity_mt_3 && (
-                                        <div className="flex justify-between mt-2">
-                                            <span>{ConvertCommodityTypeToIndonesianCommodity(markerDetail?.planting_history?.commodity_mt_3)}</span>
-                                            <span className="font-semibold">
-                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.tanam_mt_3)}
-                                                &nbsp;-&nbsp;
-                                                {ConvertDateMonthToIndonesianMonth(markerDetail?.planting_history?.panen_mt_3)}
-                                            </span>
-                                        </div>
-                                    )
-                                }
-                            </div>
-                        )
+            <SurveyDrawer 
+                surveyStep={surveyStep}
+                surveyCommodity={surveyCommodity}
+                surveyHST={surveyHST}
+                capturedImage={capturedImage}
+                uploadedImage={uploadedImage}
+                dataHistory={dataHistory}
+                userType={userType}
+                onCommoditySelect={setSurveyCommodity}
+                onHSTChange={(e) => setSurveyHST(e.target.value)}
+                onPhotoClick={() => {
+                    setSurveyStep(2);
+                    setIsWebcamActive(true);
+                }}
+                onHistoryClick={() => {
+                    if (event === "view") {
+                        setIsEditOpen(false);
                     }
-
-                    {(markerDetail?.username == username) && (
-                        <div className="fixed bottom-0 left-0 w-full bg-white p-5">
-                            <div className="flex space-x-3 text-sm">
-                                <button
-                                    className="flex-1 border border-red-500 text-red-500 p-2 rounded font-semibold"
-                                    onClick={onDeleteDetail}
-                                >Hapus</button>
-                                <button
-                                    className="flex-1 bg-blue text-white p-2 rounded font-semibold"
-                                    onClick={onEditDetail}
-                                >Ubah</button>
-                            </div>
-                        </div>
-                    )
+                    if (event === "survey") {
+                        setSurveyStep(0);
                     }
+                    setIsHistoryOpen(true);
+                }}
+                onFinish={finishSurvey}
+                handleKeyPress={handleKeyPress}
+            />
 
-                </div>
-            </Drawer>
-
-            <Drawer
-                open={isEditOpen}
-                placement="bottom"
-                zIndex={999999}
-                height={650}
-                className="drawer-body-modified rounded-xl"
-                closeIcon={false}
-            >
-                <div className="relative h-full">
-                    <div className="flex justify-between items-center px-4 pt-3">
-                        <h1 className="text-base font-semibold text-black">Ubah Penanda</h1>
-                        <h1 className="text-xs font-semibold text-black"
-                            onClick={onCloseEdit}
-                        >
-                            <X />
-                        </h1>
-                    </div>
-
-                    <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Pilih Komoditas</h2>
-                    <div className="text-center w-full flex justify-around px-3 mt-2">
-                        <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3 
-                                ${surveyCommodity === "padi" ? "border-blue" : "border-gray-300"
-                                }`}
-                            onClick={() => {
-                                clickedCommodity("padi")
-                            }}
-                        >
-                            <img src="/padi.png" className="icon-commodity ml-auto mr-auto"></img>
-                            <div className="font-semibold text-xs mt-1.5">
-                                Padi
-                            </div>
-                        </div>
-                        <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3
-                                ${surveyCommodity === "jagung" ? "border-blue" : "border-gray-300"
-                                }`}
-                            onClick={() => {
-                                clickedCommodity("jagung")
-                            }}
-                        >
-                            <img src="/jagung.png" className="icon-commodity ml-auto mr-auto"></img>
-                            <div className="font-semibold text-xs mt-1.5">
-                                Jagung
-                            </div>
-                        </div>
-                        <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3
-                                ${surveyCommodity === "tebu" ? "border-blue" : "border-gray-300"
-                                }`}
-                            onClick={() => {
-                                clickedCommodity("tebu")
-                            }}
-                        >
-                            <img src="/tebu.png" className="icon-commodity ml-auto mr-auto"></img>
-                            <div className="font-semibold text-xs mt-1.5">
-                                Tebu
-                            </div>
-                        </div>
-                        <div style={{ width: '70px' }}
-                            className={`border rounded text-center mx-2 py-3
-                                ${surveyCommodity === "other" ? "border-blue" : "border-gray-300"
-                                }`}
-                            onClick={() => {
-                                clickedCommodity("other")
-                            }}
-                        >
-                            <img src="/other.png" className="icon-commodity ml-auto mr-auto"></img>
-                            <div className="font-semibold text-xs mt-1.5">
-                                Lainnya
-                            </div>
-                        </div>
-                    </div>
-
-                    <h2 className="text-sm mt-4 px-4 font-medium">Hari setelah tanam <span className="font-light text-gray-500"> (Opsional)</span></h2>
-                    <div className="mx-4 mt-2">
-                        <Input className="input-custom" placeholder="Masukkan HST"
-                            value={surveyHST}
-                            onChange={onChangeHST}
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            type="tel"
-                            onKeyPress={handleKeyPress}
-                        ></Input>
-                    </div>
-
-
-                    <h2 className="text-sm mt-4 px-4 font-medium"><span className="font-semibold text-red-600">*</span> Foto komoditas</h2>
-                    <div className="px-4 mt-2">
-                        <div className="image-commodity-container-empty border border-gray-300 rounded "
-                            onClick={handleSurveyPhoto}
-                        >
-
-                            {uploadedImage && (
-                                <>
-                                    <img src={uploadedImage} className="image-commodity-container rounded" />
-                                    {/* Overlay for darkening effect */}
-                                    <div className="absolute inset-0 bg-black opacity-50"></div>
-                                </>
-                            )}
-
-                            {/* Centered content */}
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
-                                <div className={uploadedImage ? "text-white" : "text-gray-500"}>
-                                    <Camera className="block w-full" size={16} />
-                                    <div className="mt-1 text-center">
-                                        {uploadedImage ? "Ganti Foto" : "Tambah foto komoditas"}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    {
-                        dataHistory && (
-                            <div className="px-4 text-sm ">
-                                <h2 className="mt-4 font-medium">History Tanam</h2>
-                                {
-                                    dataHistory.commodity_mt_1 && (
-                                        <div className="flex justify-between mt-2">
-                                            <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_1)}</span>
-                                            <span className="font-semibold">
-                                                {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_1)}
-                                                &nbsp;-&nbsp;
-                                                {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_1)}
-                                            </span>
-                                        </div>
-                                    )
-                                }
-                                {
-                                    dataHistory.commodity_mt_2 && (
-                                        <div className="flex justify-between mt-2">
-                                            <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_2)}</span>
-                                            <span className="font-semibold">
-                                                {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_2)}
-                                                &nbsp;-&nbsp;
-                                                {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_2)}
-                                            </span>
-                                        </div>
-                                    )
-                                }
-                                {
-                                    dataHistory.commodity_mt_3 && (
-                                        <div className="flex justify-between mt-2">
-                                            <span>{ConvertCommodityTypeToIndonesianCommodity(dataHistory.commodity_mt_3)}</span>
-                                            <span className="font-semibold">
-                                                {ConvertDateMonthToIndonesianMonth(dataHistory.tanam_mt_3)}
-                                                &nbsp;-&nbsp;
-                                                {ConvertDateMonthToIndonesianMonth(dataHistory.panen_mt_3)}
-                                            </span>
-                                        </div>
-                                    )
-                                }
-                            </div>
-                        )
+            <CameraCapture 
+                isActive={isWebcamActive}
+                capturedImage={capturedImage}
+                onCapture={setCapturedImage}
+                onSave={() => {
+                    setUploadedImage(capturedImage);
+                    setIsWebcamActive(false);
+                    if (event === "survey") {
+                        setSurveyStep(1);
+                    } else {
+                        setIsEditOpen(true);
                     }
+                }}
+                onRetake={() => setCapturedImage("")}
+            />
 
+            <MarkerDetail 
+                isOpen={isDetailOpen}
+                onClose={onCloseDetail}
+                onEdit={onEditDetail}
+                onDelete={onDeleteDetail}
+                markerDetail={markerDetail}
+                uploadedImage={uploadedImage}
+                isCurrentUser={markerDetail?.username === username}
+            />
 
-                    <div className="absolute bottom-0 w-full">
-                        <div className="px-4 ">
-                            <div
-                                className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded ${surveyCommodity != "" ? 'bg-blue' : 'bg-blue-200'}`}
-                                disabled={surveyCommodity != "" ? false : true}
-                                onClick={handleFinishEdit}
-                            >
-                                Simpan Perubahan
-                            </div>
-                            <div
-                                className={`mb-4 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400`}
-                                disabled={surveyCommodity != "" ? false : true}
-                                onClick={onOpenHistory}
-                            >
-                                + Tambah Histori Tanam
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </Drawer>
+            <PlantingHistoryForm 
+                isOpen={isHistoryOpen}
+                onClose={onCloseHistory}
+                onSave={handleFinishHistory}
+                initialData={dataHistory}
+            />
 
             <Modal
                 open={isDeleteOpen}
@@ -1350,9 +806,79 @@ export default function Collaborator() {
 
             </Modal>
 
+            <Modal
+                open={isLeaderboardOpen}
+                zIndex={9999999}
+                footer={false}
+                closable={true}
+                onCancel={() => {
+                    setIsLeaderboardOpen(false)
+                }}
+                closeIcon={false}
+                className="modal-margin"
+                centered
+            >
+                <div className="">
+                    <div className="text-sm text-gray-500 mb-5">Update terakhir: 13 Jun 2025 13:28</div>
+                    <div className="grid grid-cols-4 gap-4">
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-green-800 rounded-full flex items-center justify-center mx-auto mb-1">
+                                <img src="/paddy.png" className="w-6 h-6" alt="Padi" />
+                            </div>
+                            <div className="text-lg font-semibold">156</div>
+                            <div className="text-xs text-gray-500">Padi</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-yellow-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                                <img src="/corn.png" className="w-6 h-6" alt="Jagung" />
+                            </div>
+                            <div className="text-lg font-semibold">118</div>
+                            <div className="text-xs text-gray-500">Jagung</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-teal-700 rounded-full flex items-center justify-center mx-auto mb-1">
+                                <img src="/cane.png" className="w-6 h-6" alt="Tebu" />
+                            </div>
+                            <div className="text-lg font-semibold">95</div>
+                            <div className="text-xs text-gray-500">Tebu</div>
+                        </div>
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-1 white">
+                                <img src="/others.png" className="w-6 h-6" alt="Lainnya" />
+                            </div>
+                            <div className="text-lg font-semibold">43</div>
+                            <div className="text-xs text-gray-500">Lainnya</div>
+                        </div>
+                    </div>
 
+                    <div className="mt-4 overflow-hidden rounded-lg border">
+                        <table className="min-w-full ">
+                            <thead>
+                                <tr className="bg-gray-100">
+                                    <th className="text-left p-2 text-xs font-medium text-black">No</th>
+                                    <th className="text-left p-2 text-xs font-medium text-black">Nama</th>
+                                    <th className="text-right p-2 text-xs font-medium text-black">Jumlah Poin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {leaderboards.map((item) => {
+                                    return (
+                                        <tr key={item.no} className="border-b border-gray-100 py-1">
+                                            <td className="p-2 text-sm text-gray-500">{item.no}</td>
+                                            <td className="p-2 text-sm">{item.nama}</td>
+                                            <td className="p-2 text-sm text-blue font-medium text-right">{item.point}</td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
 
-
+                    <button className="w-full bg-blue text-white font-medium py-2 rounded-lg mt-4">
+                        Lihat Semua
+                    </button>
+                </div>
+            </Modal>
         </main >
     )
 }

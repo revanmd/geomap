@@ -3,6 +3,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { MessageProvider } from "@/context/messageContext";
 import "./globals.css";
 import { LoadingProvider } from "@/context/loadingContext";
+import { UserProvider } from "@/context/userContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -30,15 +31,17 @@ export default function RootLayout({ children }) {
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <LoadingProvider>
-          <MessageProvider>
-            <AntdRegistry>
+        <UserProvider>
+          <LoadingProvider>
+            <MessageProvider>
+              <AntdRegistry>
 
-              {children}
+                {children}
 
-            </AntdRegistry>
-          </MessageProvider>
-        </LoadingProvider>
+              </AntdRegistry>
+            </MessageProvider>
+          </LoadingProvider>
+        </UserProvider>
       </body>
     </html>
   );
