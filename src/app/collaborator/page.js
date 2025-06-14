@@ -243,7 +243,7 @@ export default function Collaborator() {
             mapFunctions?.removeMarkerAdd()
         }
         setDataHistory()
-        setSurveyHST()
+        setSurveyHST("")
         setSurveyCommodity("")
         setSurveyStep(0)
         setCapturedImage("")
@@ -289,8 +289,9 @@ export default function Collaborator() {
             console.log(error)
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
         }
-        setEvent("survey")
+        
         resetSurvey()
+        setEvent("view")
         hideLoading()
     }
 
@@ -449,32 +450,6 @@ export default function Collaborator() {
 
     const [isHistoryOpen, setIsHistoryOpen] = useState(false)
     const [dataHistory, setDataHistory] = useState()
-    const [FormHistory] = Form.useForm()
-
-
-    const optionCommodity = [
-        { label: 'Padi', value: 'padi' },
-        { label: 'Jagung', value: 'jagung' },
-        { label: 'Tebu', value: 'tebu' },
-        { label: 'Lainnya', value: 'other' },
-    ]
-
-    const setFieldsHistory = (data) => {
-        const payload = {
-            ...data,
-            commodity_mt_1: data?.commodity_mt_1 != "" && data?.commodity_mt_1 != undefined ? data.commodity_mt_1 : undefined,
-            commodity_mt_2: data?.commodity_mt_2 != "" && data?.commodity_mt_2 != undefined ? data.commodity_mt_2 : undefined,
-            commodity_mt_3: data?.commodity_mt_3 != "" && data?.commodity_mt_3 != undefined ? data.commodity_mt_3 : undefined,
-            panen_mt_1: data?.panen_mt_1 ? dayjs(data?.panen_mt_1, 'YYYY-MM') : undefined,
-            panen_mt_2: data?.panen_mt_2 ? dayjs(data?.panen_mt_2, 'YYYY-MM') : undefined,
-            panen_mt_3: data?.panen_mt_3 ? dayjs(data?.panen_mt_3, 'YYYY-MM') : undefined,
-            tanam_mt_1: data?.tanam_mt_1 ? dayjs(data?.tanam_mt_1, 'YYYY-MM') : undefined,
-            tanam_mt_2: data?.tanam_mt_2 ? dayjs(data?.tanam_mt_2, 'YYYY-MM') : undefined,
-            tanam_mt_3: data?.tanam_mt_3 ? dayjs(data?.tanam_mt_3, 'YYYY-MM') : undefined,
-        }
-        console.log(payload)
-        FormHistory.setFieldsValue(payload)
-    }
 
     const onOpenHistory = () => {
         if (event == "view") {
@@ -485,11 +460,12 @@ export default function Collaborator() {
             setSurveyStep(0)
         }
 
-        setFieldsHistory(dataHistory)
         setIsHistoryOpen(true)
     }
 
     const onCloseHistory = () => {
+        setIsHistoryOpen(false)
+        
         if (event == "view") {
             setIsEditOpen(true)
         }
@@ -497,26 +473,11 @@ export default function Collaborator() {
         if (event == "survey") {
             setSurveyStep(1)
         }
-
-        setIsHistoryOpen(false)
     }
 
-    const handleFinishHistory = () => {
-        const values = FormHistory.getFieldsValue()
-
-        const body = {
-            ...values,
-            panen_mt_1: values.panen_mt_1?.format("YYYY-MM"),
-            panen_mt_2: values.panen_mt_2?.format("YYYY-MM"),
-            panen_mt_3: values.panen_mt_3?.format("YYYY-MM"),
-            tanam_mt_1: values.tanam_mt_1?.format("YYYY-MM"),
-            tanam_mt_2: values.tanam_mt_2?.format("YYYY-MM"),
-            tanam_mt_3: values.tanam_mt_3?.format("YYYY-MM"),
-        }
-
-        setDataHistory(body)
+    const handleFinishHistory = (formattedValues) => {
+        setDataHistory(formattedValues)
         setIsHistoryOpen(false)
-        FormHistory.resetFields()
 
         if (event == "view") {
             setIsEditOpen(true)
@@ -534,13 +495,6 @@ export default function Collaborator() {
 
     useEffect(() => {
         if (typeof window != "undefined") {
-            let leaderboard = localStorage.getItem("leaderboard")
-            let gpsLocation = localStorage.getItem("gps_location")
-
-            // if ((leaderboard == "" || leaderboard == null || leaderboard == undefined) && gpsLocation == "allowed") {
-            //     setIsLeaderboardOpen(true)
-            // }
-
             let navigation = new URLSearchParams(window.location.search);
             if (navigation.get("navigation") == "summary") {
                 fetchSelfMarker();
@@ -726,6 +680,7 @@ export default function Collaborator() {
                 uploadedImage={uploadedImage}
                 dataHistory={dataHistory}
                 userType={userType}
+                isHistoryOpen={isHistoryOpen}
                 onCommoditySelect={setSurveyCommodity}
                 onHSTChange={(e) => setSurveyHST(e.target.value)}
                 onPhotoClick={() => {
@@ -735,9 +690,6 @@ export default function Collaborator() {
                 onHistoryClick={() => {
                     if (event === "view") {
                         setIsEditOpen(false);
-                    }
-                    if (event === "survey") {
-                        setSurveyStep(0);
                     }
                     setIsHistoryOpen(true);
                 }}

@@ -16,9 +16,10 @@ export default function SurveyDrawer({
     onPhotoClick,
     onHistoryClick,
     onFinish,
-    handleKeyPress
+    handleKeyPress,
+    isHistoryOpen
 }) {
-    if (surveyStep !== 1) return null;
+    if (surveyStep !== 1 || isHistoryOpen) return null;
 
     return (
         <div

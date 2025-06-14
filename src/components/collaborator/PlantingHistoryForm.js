@@ -1,6 +1,7 @@
 import { Form, Select, DatePicker } from "antd";
 import { Minus, X } from "lucide-react";
 import { useEffect } from "react";
+import dayjs from "dayjs";
 
 const optionCommodity = [
     { label: 'Padi', value: 'padi' },
@@ -32,6 +33,8 @@ export default function PlantingHistoryForm({
                 tanam_mt_3: initialData?.tanam_mt_3 ? dayjs(initialData.tanam_mt_3, 'YYYY-MM') : undefined,
             };
             form.setFieldsValue(formattedData);
+        }else{
+            form.resetFields();
         }
     }, [initialData, form]);
 
@@ -46,14 +49,18 @@ export default function PlantingHistoryForm({
             tanam_mt_2: values.tanam_mt_2?.format("YYYY-MM"),
             tanam_mt_3: values.tanam_mt_3?.format("YYYY-MM"),
         };
-        onSave(formattedValues);
         form.resetFields();
+        onSave(formattedValues);
+        
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="absolute bottom-0 left-0 z-99999 bg-white w-screen animate-slide-up">
+        <div 
+            className="absolute bottom-0 left-0 bg-white w-screen animate-slide-up"
+            style={{ zIndex: 99999 }}
+        >
             <div className="flex justify-between items-center px-4 pt-4">
                 <div>
                     <h1 className="text-base font-semibold text-black">Histori Tanam</h1>
