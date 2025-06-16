@@ -755,7 +755,7 @@ export default function Collaborator() {
                         position: 'absolute',
                         bottom: 0,
                         left: 0,
-                        zIndex: 9999,
+                        zIndex: 999999,
                         transform: 'translateY(0)',
                         transition: 'transform 0.2s ease-out'
                     }}
