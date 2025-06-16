@@ -353,7 +353,7 @@ export default function Map({
         closeIcon={false}
         onClose={onCloseSelectMap}
         open={isSelectMapOpen}
-        zIndex={999999}
+        zIndex={99999999}
         height={300}
         className="drawer-body-modified"
       >

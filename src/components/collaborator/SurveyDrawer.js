@@ -21,7 +21,7 @@ export default function SurveyDrawer({
     isHistoryOpen
 }) {
     if (surveyStep !== 1 || isHistoryOpen) return null;
-
+ 
     return (
         <div
             style={{

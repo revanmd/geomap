@@ -50,25 +50,27 @@ export default function PlantingHistoryForm({
     const [form] = Form.useForm();
 
     useEffect(() => {
-        if (initialData) {
-            const formattedData = {
-                ...initialData,
-                commodity_mt_1: initialData?.commodity_mt_1 || undefined,
-                commodity_mt_2: initialData?.commodity_mt_2 || undefined,
-                commodity_mt_3: initialData?.commodity_mt_3 || undefined,
-                // Format date ranges for RangePicker
-                date_range_mt_1: initialData?.tanam_mt_1 && initialData?.panen_mt_1 ? 
-                    [dayjs(initialData.tanam_mt_1, 'YYYY-MM'), dayjs(initialData.panen_mt_1, 'YYYY-MM')] : undefined,
-                date_range_mt_2: initialData?.tanam_mt_2 && initialData?.panen_mt_2 ? 
-                    [dayjs(initialData.tanam_mt_2, 'YYYY-MM'), dayjs(initialData.panen_mt_2, 'YYYY-MM')] : undefined,
-                date_range_mt_3: initialData?.tanam_mt_3 && initialData?.panen_mt_3 ? 
-                    [dayjs(initialData.tanam_mt_3, 'YYYY-MM'), dayjs(initialData.panen_mt_3, 'YYYY-MM')] : undefined,
-            };
-            form.setFieldsValue(formattedData);
-        }else{
-            form.resetFields();
+        if (isOpen) {
+            if (initialData) {
+                const formattedData = {
+                    ...initialData,
+                    commodity_mt_1: initialData?.commodity_mt_1 || undefined,
+                    commodity_mt_2: initialData?.commodity_mt_2 || undefined,
+                    commodity_mt_3: initialData?.commodity_mt_3 || undefined,
+                    // Format date ranges for RangePicker
+                    date_range_mt_1: initialData?.tanam_mt_1 && initialData?.panen_mt_1 ? 
+                        [dayjs(initialData.tanam_mt_1, 'YYYY-MM'), dayjs(initialData.panen_mt_1, 'YYYY-MM')] : undefined,
+                    date_range_mt_2: initialData?.tanam_mt_2 && initialData?.panen_mt_2 ? 
+                        [dayjs(initialData.tanam_mt_2, 'YYYY-MM'), dayjs(initialData.panen_mt_2, 'YYYY-MM')] : undefined,
+                    date_range_mt_3: initialData?.tanam_mt_3 && initialData?.panen_mt_3 ? 
+                        [dayjs(initialData.tanam_mt_3, 'YYYY-MM'), dayjs(initialData.panen_mt_3, 'YYYY-MM')] : undefined,
+                };
+                form.setFieldsValue(formattedData);
+            } else {
+                form.resetFields();
+            }
         }
-    }, [initialData, form]);
+    }, [initialData, form, isOpen]);
 
     const handleFinish = () => {
         const values = form.getFieldsValue();
