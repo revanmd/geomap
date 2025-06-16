@@ -140,6 +140,7 @@ export default function Home() {
               </Form.Item>
 
               <button
+                type="submit"
                 className={`py-3 w-full rounded font-semibold text-white mt-3 ${isFilled ? 'bg-blue' : 'bg-blue-200'}`}
                 disabled={!isFilled}
               >

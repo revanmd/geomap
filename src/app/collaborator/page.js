@@ -124,6 +124,8 @@ export default function Collaborator() {
     const onCloseEdit = () => {
         setIsEditOpen(false)
         setIsDetailOpen(true)
+        // Clear captured image when closing edit without saving
+        setCapturedImage("")
     }
 
     const handleEditPhoto = () => {
@@ -132,8 +134,17 @@ export default function Collaborator() {
     }
 
     const handleFinishEdit = async () => {
+        // Prevent multiple submissions
+        if (isSubmitting) return;
+
+        if (userType === "agronomist" && !surveyHST) {
+            showMessage("HST wajib diisi untuk Agronomist", <CancleIcon />)
+            return;
+        }
+
+        setIsSubmitting(true);
         showLoading("Mohon tunggu ...")
-        // handle send the request
+        
         try {
             let filename = markerDetail.photo
             if (capturedImage != "") {
@@ -148,16 +159,26 @@ export default function Collaborator() {
                         lat: markerDetail?.location?.lat,
                         lon: markerDetail?.location?.lon
                     },
-                    hst: parseInt(surveyHST),
+                    hst: parseInt(surveyHST) || 0,
                     planting_history: dataHistory
                 }
 
-                // Create marker
+                // Update marker
                 const response = await markerService.updateMarker(markerDetail?.id, marker);
+
+                // Update the marker detail with new data
+                setMarkerDetail(response?.data);
 
                 // Flagging as success
                 mapFunctions.updateMarker(response?.data?.id, [markerDetail?.location?.lat, markerDetail?.location?.lon], surveyCommodity)
                 showMessage("Komoditas berhasil diubah", <ChecklistIcon />)
+
+                // Close edit and return to detail view
+                setIsEditOpen(false)
+                setIsDetailOpen(true)
+                
+                // Clear captured image but keep other data for detail view
+                setCapturedImage("")
             } else {
                 showMessage("Gagal mengupload foto", <CancleIcon />)
             }
@@ -166,17 +187,13 @@ export default function Collaborator() {
                 mapInteraction.fetchSelfMarkers()
             }
 
-            setIsEditOpen(false)
-
-
         } catch (error) {
             console.log(error)
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
+        } finally {
+            setIsSubmitting(false);
+            hideLoading()
         }
-
-
-        resetSurvey()
-        hideLoading()
     }
 
     const handleCancelDelete = () => {
@@ -210,6 +227,29 @@ export default function Collaborator() {
 
     const [surveyCommodity, setSurveyCommodity] = useState("")
     const [surveyHST, setSurveyHST] = useState("")
+    const [isSubmitting, setIsSubmitting] = useState(false)
+
+    ////////////////////////////////////////////////////////////////
+    /// HISTORY TANAM
+
+    const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+    const [dataHistory, setDataHistory] = useState()
+
+    ////////////////////////////////////////////////////////////////
+    //// WEBCAM
+
+    const [isWebcamActive, setIsWebcamActive] = useState(false)
+    const webcamRef = useRef(null)
+    const [capturedImage, setCapturedImage] = useState("");
+
+    ////////////////////////////////
+    /// SUMMARY
+
+    const [summary, setSummary] = useState(null)
+
+    ////////////////////////////////////////////////////////////////
+    //// LEADERBOARD
+    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
 
     const clickedCommodity = (commodityType) => {
         setSurveyCommodity(commodityType)
@@ -247,16 +287,16 @@ export default function Collaborator() {
         setSurveyCommodity("")
         setSurveyStep(0)
         setCapturedImage("")
+        setIsSubmitting(false)
     }
 
     const finishSurvey = async () => {
-        if (userType === "agronomist" && !surveyHST) {
-            showMessage("HST wajib diisi untuk Agronomist", <CancleIcon />)
-            return;
-        }
+        // Prevent multiple submissions
+        if (isSubmitting) return;
 
+        setIsSubmitting(true);
         showLoading("Mohon tunggu ...")
-        // handle send the request
+        
         try {
             const filename = await uploadFile(capturedImage, `${surveyCommodity}.png`)
             if (filename) {
@@ -269,10 +309,9 @@ export default function Collaborator() {
                         lat: markerLocation.lat,
                         lon: markerLocation.lng
                     },
-                    hst: parseInt(surveyHST),
+                    hst: parseInt(surveyHST) || 0,
                     planting_history: dataHistory
                 }
-
 
                 // Create marker
                 const response = await markerService.createMarker(marker);
@@ -284,15 +323,15 @@ export default function Collaborator() {
                 showMessage("Gagal mengupload foto", <CancleIcon />)
             }
 
-
         } catch (error) {
             console.log(error)
             showMessage("Gagal menambahkan komoditas", <CancleIcon />)
+        } finally {
+            resetSurvey()
+            setEvent("view")
+            setIsSubmitting(false);
+            hideLoading()
         }
-        
-        resetSurvey()
-        setEvent("view")
-        hideLoading()
     }
 
     const handleKeyPress = (e) => {
@@ -305,9 +344,6 @@ export default function Collaborator() {
     ////////////////////////////////////////////////////////////////
     //// WEBCAM
 
-    const [isWebcamActive, setIsWebcamActive] = useState(false)
-    const webcamRef = useRef(null)
-    const [capturedImage, setCapturedImage] = useState("");
     const captureWebcam = useCallback(() => {
         if (webcamRef.current) {
             const imageSrc = webcamRef.current.getScreenshot();
@@ -333,8 +369,6 @@ export default function Collaborator() {
     ////////////////////////////////
     /// SUMMARY
 
-    const [summary, setSummary] = useState(null)
-
     const fetchSummary = async () => {
         try {
             const summary = await markerService.summary()
@@ -351,7 +385,7 @@ export default function Collaborator() {
     const fetchMarker = async () => {
         try {
             const markers = await markerService.getMarkers()
-            if (markers.data) {
+            if (markers.data && mapFunctions) {
                 mapFunctions.initializeMarkers(markers.data)
             }
         } catch (error) {
@@ -367,7 +401,7 @@ export default function Collaborator() {
             }
 
             const markers = await markerService.getSelfMarkers()
-            if (markers.data) {
+            if (markers.data && mapFunctions) {
                 mapFunctions.initializeMarkers(markers.data)
             }
         } catch (error) {
@@ -384,13 +418,30 @@ export default function Collaborator() {
         }
     }
 
+    ////////////////////////////////////////////////////////////////
+    //// CALLBACK FUNCTIONS WITH DEBOUNCE PROTECTION
+
+    // Handle submit with debounce protection
+    const handleFinishSurvey = useCallback(() => {
+        if (isSubmitting) return;
+        finishSurvey();
+    }, [isSubmitting, userType, surveyHST, capturedImage, surveyCommodity, dataHistory, mapFunctions]);
+
+    // Handle edit submit with debounce protection
+    const handleFinishEditWithDebounce = useCallback(() => {
+        if (isSubmitting) return;
+        handleFinishEdit();
+    }, [isSubmitting, userType, surveyHST, capturedImage, surveyCommodity, dataHistory, markerDetail]);
+
     ////////////////////////////////
     /// NAVIGATION
 
     const handleMenuSurvey = async () => {
         showLoading("Mohon tunggu..");
         try {
-            await mapInteraction.fetchMarkers();
+            if (mapFunctions) {
+                await mapInteraction.fetchMarkers();
+            }
             setEvent("view");
         } catch (error) {
             console.error('Error fetching markers:', error);
@@ -404,7 +455,9 @@ export default function Collaborator() {
         try {
             const summaryData = await markerService.summary();
             setSummary(summaryData.data);
-            await mapInteraction.fetchSelfMarkers();
+            if (mapFunctions) {
+                await mapInteraction.fetchSelfMarkers();
+            }
             setEvent("summary");
         } catch (error) {
             console.error('Error fetching summary:', error);
@@ -446,10 +499,7 @@ export default function Collaborator() {
     };
 
     ////////////////////////////////////////////////////////////////
-    /// HISTORY TANAM
-
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-    const [dataHistory, setDataHistory] = useState()
+    /// HISTORY TANAM FUNCTIONS
 
     const onOpenHistory = () => {
         if (event == "view") {
@@ -490,7 +540,6 @@ export default function Collaborator() {
 
     ////////////////////////////////////////////////////////////////
     //// LEADERBOARD
-    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
 
 
     useEffect(() => {
@@ -543,6 +592,7 @@ export default function Collaborator() {
                 callbackPressMap={callbackPressMap}
                 callbackClickMarker={callbackClickMarker}
                 onMapReady={handleMapReady}
+                showMessage={showMessage}
             />
 
             {
@@ -586,9 +636,9 @@ export default function Collaborator() {
                 event != "survey" && (
                     <div
                         style={{
-                            position: 'absolute',
+                            position: 'fixed',
                             bottom: 0,
-                            zIndex: 9999
+                            zIndex: 99999
                         }}
                     >
                         {
@@ -681,6 +731,7 @@ export default function Collaborator() {
                 dataHistory={dataHistory}
                 userType={userType}
                 isHistoryOpen={isHistoryOpen}
+                isSubmitting={isSubmitting}
                 onCommoditySelect={setSurveyCommodity}
                 onHSTChange={(e) => setSurveyHST(e.target.value)}
                 onPhotoClick={() => {
@@ -693,9 +744,139 @@ export default function Collaborator() {
                     }
                     setIsHistoryOpen(true);
                 }}
-                onFinish={finishSurvey}
+                onFinish={handleFinishSurvey}
                 handleKeyPress={handleKeyPress}
             />
+
+            {/* Edit Drawer */}
+            {isEditOpen && (
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        zIndex: 9999,
+                        transform: 'translateY(0)',
+                        transition: 'transform 0.2s ease-out'
+                    }}
+                    className="bg-white w-screen animate-slide-up"
+                >
+                    <div className="flex justify-between items-center px-4 pt-4">
+                        <h1 className="text-base font-semibold text-black">Edit Komoditas</h1>
+                        <button 
+                            className="text-lg font-semibold text-black" 
+                            onClick={onCloseEdit}
+                        >
+                            <X />
+                        </button>
+                    </div>
+
+                    <h2 className="text-sm mt-4 px-4 font-medium">
+                        <span className="font-semibold text-red-600">*</span> Pilih Komoditas
+                    </h2>
+                    
+                    <CommoditySelector 
+                        selectedCommodity={surveyCommodity}
+                        onSelect={isSubmitting ? () => {} : setSurveyCommodity}
+                        disabled={isSubmitting}
+                    />
+
+                    <h2 className="text-sm mt-4 px-4 font-medium">
+                        Hari setelah Tanam
+                        <span className="font-light text-gray-500"> (Opsional)</span>
+                    </h2>
+                    <div className="mx-4 mt-2">
+                        <Input 
+                            className="input-custom" 
+                            placeholder="Masukkan HST"
+                            value={surveyHST}
+                            onChange={onChangeHST}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            type="tel"
+                            onKeyPress={handleKeyPress}
+                            disabled={isSubmitting}
+                        />
+                    </div>
+
+                    <h2 className="text-sm mt-4 px-4 font-medium">
+                        <span className="font-semibold text-red-600">*</span> Foto komoditas
+                    </h2>
+                    <div className="px-4 mt-2">
+                        <div 
+                            className={`image-commodity-container-empty border rounded ${
+                                isSubmitting 
+                                    ? 'border-gray-200 cursor-not-allowed' 
+                                    : 'border-gray-300 cursor-pointer hover:border-blue-400'
+                            }`}
+                            onClick={isSubmitting ? () => {} : handleEditPhoto}
+                        >
+                            {(capturedImage || uploadedImage) && (
+                                <>
+                                    <img src={uploadedImage} className="image-commodity-container rounded" alt="Preview" />
+                                    <div className="absolute inset-0 bg-black opacity-50"></div>
+                                </>
+                            )}
+
+                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
+                                <div className={(capturedImage || uploadedImage) ? "text-white" : "text-gray-500"}>
+                                    <Camera className="block w-full" size={16} />
+                                    <div className="mt-1 text-center">
+                                        {(capturedImage || uploadedImage) ? "Ganti Foto" : "Tambah foto komoditas"}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {dataHistory && (
+                        <div className="px-4 text-sm">
+                            <h2 className="mt-4 font-medium">History Tanam</h2>
+                            {[1, 2, 3].map((period) => {
+                                const commodity = dataHistory[`commodity_mt_${period}`];
+                                const tanam = dataHistory[`tanam_mt_${period}`];
+                                const panen = dataHistory[`panen_mt_${period}`];
+
+                                if (!commodity) return null;
+
+                                return (
+                                    <div key={period} className="flex justify-between mt-2">
+                                        <span>{ConvertCommodityTypeToIndonesianCommodity(commodity)}</span>
+                                        <span className="font-semibold">
+                                            {ConvertDateMonthToIndonesianMonth(tanam)}
+                                            &nbsp;-&nbsp;
+                                            {ConvertDateMonthToIndonesianMonth(panen)}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <div className="mx-4">
+                        <button
+                            className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded w-full ${
+                                (surveyCommodity !== "" && !isSubmitting) ? 'bg-blue' : 'bg-blue-200'
+                            }`}
+                            disabled={!surveyCommodity || isSubmitting}
+                            onClick={handleFinishEditWithDebounce}
+                        >
+                            {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+                        </button>
+                        <button
+                            className={`mb-4 mt-2 font-semibold text-center text-sm p-2 rounded border w-full ${
+                                isSubmitting 
+                                    ? 'text-gray-400 border-gray-200 cursor-not-allowed' 
+                                    : 'text-black border-gray-400 hover:bg-gray-50'
+                            }`}
+                            onClick={onOpenHistory}
+                            disabled={isSubmitting}
+                        >
+                            + Tambah Histori Tanam
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <CameraCapture 
                 isActive={isWebcamActive}

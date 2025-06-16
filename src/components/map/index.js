@@ -8,6 +8,8 @@ import { Compass, Crosshair, Info, Layers, Search, X } from "lucide-react";
 import { Drawer, Spin, Modal } from "antd";
 import { motion } from "framer-motion";
 import { useLoading } from "@/context/loadingContext";
+import { useGps } from "@/context/gpsContext";
+import { CancleIcon } from "@/components/icon";
 import axios from "axios";
 import { debounce } from "lodash";
 
@@ -19,12 +21,21 @@ export default function Map({
   callbackCancelMarker,
   callbackPressMap,
   callbackReleaseMap,
-  onMapReady
+  onMapReady,
+  showMessage
 }) {
   const { showLoading, hideLoading } = useLoading();
+  const {
+    gpsLocation,
+    updateGpsLocation,
+    getCachedGpsLocation,
+    hasGpsPermission,
+    isGpsFresh
+  } = useGps();
 
   const [zoom, setZoom] = useState(11)
   const [isActiveGPS, setIsActiveGPS] = useState(true)
+  const [isGpsPositioning, setIsGpsPositioning] = useState(false)
 
 
   const {
@@ -53,36 +64,98 @@ export default function Map({
     onReleaseMap: callbackReleaseMap
   });
 
-  const onGeolocationUpdate = () => {
+  // Function to use cached GPS location if available and fresh
+  const handleCachedGpsLocation = () => {
+    const cachedLocation = getCachedGpsLocation();
+    if (cachedLocation) {
+      setIsGpsPositioning(true);
+      showLoading("Menggunakan lokasi tersimpan...");
+      setGpsLocation(cachedLocation, 200, 17, () => {
+        localStorage.setItem("gps_location", "allowed")
+        setIsActiveGPS(true);
+        setIsGpsPositioning(false);
+        hideLoading();
+      });
+      return true;
+    }
+    return false;
+  };
+
+  // Function to fetch fresh GPS location
+  const fetchFreshGpsLocation = () => {
     showLoading("Mohon tunggu ya, Kami sedang mencari lokasi Anda ..");
-    setIsActiveGPS(true)
+    setIsGpsPositioning(true);
+
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setGpsLocation({
+          // Success - GPS found location
+          const newLocation = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          }, 200, 17);
-          localStorage.setItem("gps_location", "allowed")
-          setIsActiveGPS(true);
-          hideLoading();
+          };
+
+          // Update global GPS state
+          updateGpsLocation(newLocation);
+
+          setGpsLocation(newLocation, 200, 17, () => {
+            // This callback runs after the map has centered to the GPS position
+            localStorage.setItem("gps_location", "allowed")
+            setIsActiveGPS(true); // Close modal only on success
+            setIsGpsPositioning(false);
+            hideLoading(); // Hide loading only after map has centered
+          });
         },
         (error) => {
           console.error("Geolocation error:", error.message);
           localStorage.setItem("gps_location", "not-allowed")
-          setIsActiveGPS(false);
+          setIsGpsPositioning(false);
           hideLoading();
+
+          // Show specific error message based on error type
+          let errorMessage = "Tidak dapat membaca GPS pada lokasi Anda";
+          if (error.code === error.TIMEOUT) {
+            errorMessage = "Tidak dapat membaca GPS pada lokasi Anda - waktu tunggu habis";
+          } else if (error.code === error.PERMISSION_DENIED) {
+            errorMessage = "Akses lokasi ditolak. Silakan izinkan akses lokasi";
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            errorMessage = "Tidak dapat membaca GPS pada lokasi Anda - sinyal tidak tersedia";
+          }
+
+          // Show error message to user
+          if (typeof showMessage === 'function') {
+            showMessage(errorMessage, <CancleIcon />);
+          } else {
+            alert(errorMessage);
+          }
+
+          // Keep modal open for retry
+          setIsActiveGPS(false);
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000, // 10 seconds
+          timeout: 15000, // Increased to 15 seconds for better GPS acquisition
           maximumAge: 0    // no cached positions
         }
       );
     } else {
-      alert("Geolocation is not supported by your browser.");
+      setIsGpsPositioning(false);
+      hideLoading();
+      const errorMessage = "GPS tidak didukung oleh browser Anda";
+      if (typeof showMessage === 'function') {
+        showMessage(errorMessage, <CancleIcon />);
+      } else {
+        alert(errorMessage);
+      }
       setIsActiveGPS(false)
-      hideLoading()
+    }
+  };
+
+  const onGeolocationUpdate = () => {
+    // First try to use cached GPS location if it's fresh (within 30 seconds)
+    if (!handleCachedGpsLocation()) {
+      // If no cached location or it's stale, fetch fresh GPS location
+      fetchFreshGpsLocation();
     }
   }
 
@@ -101,9 +174,19 @@ export default function Map({
         onGeolocationUpdate,
       });
 
-      if (localStorage.getItem("gps_location") === "allowed") {
-        onGeolocationUpdate()
-      }else{
+      if (hasGpsPermission()) {
+        // Add a delay to ensure the map is fully initialized
+        // Check if map container exists before attempting GPS positioning
+        const checkMapReady = () => {
+          if (mapContainerRef.current) {
+            onGeolocationUpdate();
+          } else {
+            // If map not ready, wait a bit longer and check again
+            setTimeout(checkMapReady, 200);
+          }
+        };
+        setTimeout(checkMapReady, 100);
+      } else {
         setIsActiveGPS(false)
       }
     }
@@ -182,9 +265,9 @@ export default function Map({
     setIsLegendOpen(false)
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     setDataMap(currentDataMap, transparencyLevel / 100)
-  },[transparencyLevel])
+  }, [transparencyLevel])
 
   return (
     <div>
@@ -260,7 +343,7 @@ export default function Map({
             className="bg-white rounded-full p-3 text-gray shadow-lg inline-block mb-1 cursor-pointer"
             onClick={onInformationOpen}
           >
-            <Info  size={22} />
+            <Info size={22} />
           </div>
         </div>
       </div>
@@ -334,7 +417,7 @@ export default function Map({
         <div className="py-3 text-center w-full flex justify-around px-5">
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
-              setDataMap("none", transparencyLevel/100)
+              setDataMap("none", transparencyLevel / 100)
               setIsSelectMapOpen(false)
             }}
           >
@@ -349,7 +432,7 @@ export default function Map({
           </div>
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
-              setDataMap("dds", transparencyLevel/100)
+              setDataMap("dds", transparencyLevel / 100)
               setIsSelectMapOpen(false)
             }}
           >
@@ -365,7 +448,7 @@ export default function Map({
 
           <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
             onClick={() => {
-              setDataMap("ifri", transparencyLevel/100)
+              setDataMap("ifri", transparencyLevel / 100)
               setIsSelectMapOpen(false)
             }}
           >
@@ -391,30 +474,38 @@ export default function Map({
         className="modal-margin"
       >
         <h2 className="text-lg text-black text-center font-semibold">
-          Izinkan Akses Lokasi
+          {!hasGpsPermission() ? "Izinkan Akses Lokasi" : "Akses Lokasi Diperlukan"}
         </h2>
         <p className="text-sm text-center text-gray-500 mt-3 mb-3 leading-5">
-          Kami memerlukan akses lokasi Anda untuk mendapatkan lokasi yang akurat untuk mendukung layanan dan fungsi aplikasi
+          {!hasGpsPermission()
+            ? "Kami memerlukan akses lokasi Anda untuk mendapatkan lokasi yang akurat untuk mendukung layanan dan fungsi aplikasi"
+            : "Lokasi tidak dapat diakses. Pastikan GPS aktif dan izinkan akses lokasi untuk melanjutkan."
+          }
         </p>
 
         <button
-          className={`py-3 w-full rounded font-semibold text-white mt-3 bg-blue`}
-          onClick={onGeolocationUpdate}
+          className={`py-3 w-full rounded font-semibold text-white mt-3 ${isGpsPositioning ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue'
+            }`}
+          onClick={isGpsPositioning ? undefined : onGeolocationUpdate}
+          disabled={isGpsPositioning}
         >
-          Ya, Izinkan
+          {isGpsPositioning
+            ? "Mencari lokasi..."
+            : (!hasGpsPermission() ? "Ya, Izinkan" : "Coba Lagi")
+          }
         </button>
       </Modal>
 
       <Drawer
         closeIcon={false}
         open={isLegendOpen}
-        zIndex={9999}
+        zIndex={9999999}
         placement="bottom"
         className="drawer-body-modified rounded-xl"
         height={350}
         onClose={onCloseInformation}
       >
-        <div className="flex justify-between items-center pt-3 px-4">
+        <div className="flex justify-between items-center pt-3 px-3">
           <div>
             <h1 className="text-base font-semibold text-black">Informasi Peta</h1>
           </div>
@@ -426,14 +517,14 @@ export default function Map({
         </div>
 
         {isLegendOpen && (
-          <div className="px-4 mt-4">
-            <div className="mb-4">
+          <div className="px-3 mt-3">
+            <div className="mb-3">
               <p className="text-xs text-gray-500 mb-2 font-medium">Tingkat Transparansi Peta</p>
               <div className="flex items-center justify-between gap-2">
                 {transparencyOptions.map((level) => (
                   <button
                     key={level}
-                    onClick={() => {setTransparencyLevel(level); setIsLegendOpen(false)}}
+                    onClick={() => { setTransparencyLevel(level); setIsLegendOpen(false) }}
                     className={`px-3 py-1.5 text-xs font-medium rounded ${transparencyLevel === level ? 'bg-blue text-white' : 'border border-gray-300 text-gray'
                       }`}
                   >
@@ -444,14 +535,15 @@ export default function Map({
             </div>
 
             <div>
-              <h4 className="text-xs text-gray-500 mb-3 font-medium">Legend</h4>
               <div className="grid grid-cols-2 gap-y-1">
                 <div className="flex items-center gap-2">
-                  <img src="/icon-user.png" className="w-6 h-7" />
-                  <span className="text-sm">Penanda lain</span>
+                  <h4 className="text-xs text-gray-500 font-medium">Legend Peta</h4>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-green-800 rounded"></span>
+                  <h4 className="text-xs text-gray-500 font-medium">Penanda</h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 bg-green-800 rounded"></span>
                   <span className="text-sm">Padi</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -459,7 +551,7 @@ export default function Map({
                   <span className="text-sm">Padi</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-yellow-700 rounded"></span>
+                  <span className="w-3 h-3 bg-yellow-700 rounded"></span>
                   <span className="text-sm">Jagung</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -467,7 +559,7 @@ export default function Map({
                   <span className="text-sm">Jagung</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-teal-700 rounded"></span>
+                  <span className="w-3 h-3 bg-teal-700 rounded"></span>
                   <span className="text-sm">Tebu</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -475,7 +567,7 @@ export default function Map({
                   <span className="text-sm">Tebu</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-4 h-4 bg-gray-200 rounded"></span>
+                  <span className="w-3 h-3 bg-gray-200 rounded"></span>
                   <span className="text-sm">Komoditas lain</span>
                 </div>
                 <div className="flex items-center gap-2">

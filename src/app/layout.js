@@ -4,6 +4,7 @@ import { MessageProvider } from "@/context/messageContext";
 import "./globals.css";
 import { LoadingProvider } from "@/context/loadingContext";
 import { UserProvider } from "@/context/userContext";
+import { GpsProvider } from "@/context/gpsContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,11 +35,13 @@ export default function RootLayout({ children }) {
         <UserProvider>
           <LoadingProvider>
             <MessageProvider>
-              <AntdRegistry>
+              <GpsProvider>
+                <AntdRegistry>
 
-                {children}
+                  {children}
 
-              </AntdRegistry>
+                </AntdRegistry>
+              </GpsProvider>
             </MessageProvider>
           </LoadingProvider>
         </UserProvider>

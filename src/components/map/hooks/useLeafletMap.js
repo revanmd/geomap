@@ -132,7 +132,7 @@ export default function useLeafletMap({
                 return;
               }
 
-              if (markerAddRef.current) {
+              if (markerAddRef.current && markerAddRef.current._leaflet_id) {
                 mapInstanceRef.current.removeLayer(markerAddRef.current);
               }
               markerAddRef.current = L.marker(event.latlng, {
@@ -165,7 +165,11 @@ export default function useLeafletMap({
  
   const _destroy = (instance) => {
     if (instance.current) {
-      instance.current.eachLayer((layer) => instance.current.removeLayer(layer));
+      instance.current.eachLayer((layer) => {
+        if (layer && layer._leaflet_id) {
+          instance.current.removeLayer(layer);
+        }
+      });
       instance.current.remove();
       instance.current = null;
       layersRef.current = [];
@@ -176,7 +180,7 @@ export default function useLeafletMap({
   useEffect(() => {
     eventRef.current = event
     if (event == "view") {
-      if (markerAddRef.current) {
+      if (markerAddRef.current && markerAddRef.current._leaflet_id) {
         mapInstanceRef.current.removeLayer(markerAddRef.current);
       }
     }
@@ -224,13 +228,16 @@ export default function useLeafletMap({
   }, []);
 
 
-  const setGpsLocation = useCallback((center, radius = 200, zoom = 20) => {
-    if (!mapInstanceRef.current) return;
+  const setGpsLocation = useCallback((center, radius = 200, zoom = 20, onComplete) => {
+    if (!mapInstanceRef.current) {
+      if (onComplete) onComplete();
+      return;
+    }
 
-    if (gpsMarkerRef.current) {
+    if (gpsMarkerRef.current && gpsMarkerRef.current._leaflet_id) {
       mapInstanceRef.current.removeLayer(gpsMarkerRef.current);
     }
-    if (gpsCircleRef.current) {
+    if (gpsCircleRef.current && gpsCircleRef.current._leaflet_id) {
       mapInstanceRef.current.removeLayer(gpsCircleRef.current);
     }
 
@@ -248,8 +255,17 @@ export default function useLeafletMap({
       weight: 0,
     }).addTo(mapInstanceRef.current);
 
+    // Use setView with animation and wait for it to complete
     mapInstanceRef.current.setView(center, zoom);
     GPSCenterRef.current = center;
+
+    // Wait for the map view animation to complete
+    if (onComplete) {
+      // Use a small delay to ensure the map view change has completed
+      setTimeout(() => {
+        onComplete();
+      }, 300); // 300ms should be enough for the map animation
+    }
   }, []);
 
 
@@ -265,7 +281,7 @@ export default function useLeafletMap({
     if (!mapInstanceRef.current) return;
 
     // Remove existing base map (tile layer) but keep data layers
-    if (tileLayerRef.current) {
+    if (tileLayerRef.current && tileLayerRef.current._leaflet_id) {
       mapInstanceRef.current.removeLayer(tileLayerRef.current);
     }
 
@@ -401,7 +417,7 @@ export default function useLeafletMap({
       { id, marker: newMarker, lat, lng, type },
     ]);
 
-    if (markerAddRef.current) {
+    if (markerAddRef.current && markerAddRef.current._leaflet_id) {
       mapInstanceRef.current.removeLayer(markerAddRef.current);
     }
   }, []);
@@ -414,7 +430,9 @@ export default function useLeafletMap({
       if (markerIndex === -1) return prevMarkers;
 
       const markerToRemove = prevMarkers[markerIndex].marker;
-      markerLayerRef.current.removeLayer(markerToRemove);
+      if (markerToRemove && markerToRemove._leaflet_id) {
+        markerLayerRef.current.removeLayer(markerToRemove);
+      }
 
       return prevMarkers.filter((m) => m.id !== id);
     });
@@ -448,7 +466,7 @@ export default function useLeafletMap({
   }, []);
 
   const removeMarkerAdd = useCallback(() => {
-    if (mapInstanceRef.current) {
+    if (mapInstanceRef.current && markerAddRef.current && markerAddRef.current._leaflet_id) {
       mapInstanceRef.current.removeLayer(markerAddRef.current);
     }
   }, []);

@@ -11,6 +11,7 @@ export default function SurveyDrawer({
     uploadedImage,
     dataHistory,
     userType,
+    isSubmitting,
     onCommoditySelect,
     onHSTChange,
     onPhotoClick,
@@ -43,7 +44,8 @@ export default function SurveyDrawer({
             
             <CommoditySelector 
                 selectedCommodity={surveyCommodity}
-                onSelect={onCommoditySelect}
+                onSelect={isSubmitting ? () => {} : onCommoditySelect}
+                disabled={isSubmitting}
             />
 
             <h2 className="text-sm mt-4 px-4 font-medium">
@@ -62,6 +64,7 @@ export default function SurveyDrawer({
                     type="tel"
                     onKeyPress={handleKeyPress}
                     required={userType === "agronomist"}
+                    disabled={isSubmitting}
                 />
             </div>
 
@@ -70,8 +73,12 @@ export default function SurveyDrawer({
             </h2>
             <div className="px-4 mt-2">
                 <div 
-                    className="image-commodity-container-empty border border-gray-300 rounded"
-                    onClick={onPhotoClick}
+                    className={`image-commodity-container-empty border rounded ${
+                        isSubmitting 
+                            ? 'border-gray-200 cursor-not-allowed' 
+                            : 'border-gray-300 cursor-pointer hover:border-blue-400'
+                    }`}
+                    onClick={isSubmitting ? () => {} : onPhotoClick}
                 >
                     {capturedImage && (
                         <>
@@ -118,16 +125,21 @@ export default function SurveyDrawer({
             <div className="mx-4">
                 <button
                     className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded w-full ${
-                        (surveyCommodity !== "" && capturedImage) ? 'bg-blue' : 'bg-blue-200'
+                        (surveyCommodity !== "" && capturedImage && !isSubmitting) ? 'bg-blue' : 'bg-blue-200'
                     }`}
-                    disabled={!(surveyCommodity !== "" && capturedImage)}
+                    disabled={!(surveyCommodity !== "" && capturedImage) || isSubmitting}
                     onClick={onFinish}
                 >
-                    Simpan Komoditas
+                    {isSubmitting ? "Menyimpan..." : "Simpan Komoditas"}
                 </button>
                 <button
-                    className="mb-4 mt-2 font-semibold text-black text-center text-sm p-2 rounded border border-gray-400 w-full"
+                    className={`mb-4 mt-2 font-semibold text-center text-sm p-2 rounded border w-full ${
+                        isSubmitting 
+                            ? 'text-gray-400 border-gray-200 cursor-not-allowed' 
+                            : 'text-black border-gray-400 hover:bg-gray-50'
+                    }`}
                     onClick={onHistoryClick}
+                    disabled={isSubmitting}
                 >
                     + Tambah Histori Tanam
                 </button>

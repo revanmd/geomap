@@ -1,4 +1,4 @@
-export default function CommoditySelector({ selectedCommodity, onSelect }) {
+export default function CommoditySelector({ selectedCommodity, onSelect, disabled = false }) {
     const commodities = [
         { id: "padi", name: "Padi", icon: "/padi.png" },
         { id: "jagung", name: "Jagung", icon: "/jagung.png" },
@@ -12,9 +12,13 @@ export default function CommoditySelector({ selectedCommodity, onSelect }) {
                 <div
                     key={commodity.id}
                     style={{ width: '70px' }}
-                    className={`border rounded text-center mx-2 py-3 
-                        ${selectedCommodity === commodity.id ? "border-blue" : "border-gray-300"}`}
-                    onClick={() => onSelect(commodity.id)}
+                    className={`border rounded text-center mx-2 py-3 transition-colors
+                        ${selectedCommodity === commodity.id ? "border-blue" : "border-gray-300"}
+                        ${disabled 
+                            ? "opacity-50 cursor-not-allowed" 
+                            : "cursor-pointer hover:border-blue-400"
+                        }`}
+                    onClick={disabled ? () => {} : () => onSelect(commodity.id)}
                 >
                     <img 
                         src={commodity.icon} 
