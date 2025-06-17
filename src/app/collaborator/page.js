@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { Modal } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { useUser } from "@/context/userContext";
@@ -29,13 +29,14 @@ const MapComponent = dynamic(() => import("@/components/map"), {
     ssr: false,
 });
 
-export default function Collaborator() {
+function CollaboratorContent() {
     ////////////////////////////////
     // CONTEXT
     const { showMessage } = useMessage()
     const { showLoading, hideLoading } = useLoading();
     const { username, userType } = useUser();
     const { isGpsLoading } = useGps();
+    const searchParams = useSearchParams()
 
     // CUSTOM HOOKS
     const mapInteraction = useMapInteraction()
@@ -363,7 +364,6 @@ export default function Collaborator() {
     }, [isGpsLoading, showLoading, hideLoading]);
 
 
-    const searchParams = useSearchParams()
     useEffect(() => {
         const navigation = searchParams.get("navigation")
         if (navigation) {
@@ -581,5 +581,20 @@ export default function Collaborator() {
                 onClose={handleCloseCamera}
             />
         </main >
+    )
+}
+
+export default function Collaborator() {
+    return (
+        <Suspense fallback={
+            <div className="h-[100dvh] w-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <div className="text-sm text-gray-600">Loading...</div>
+                </div>
+            </div>
+        }>
+            <CollaboratorContent />
+        </Suspense>
     )
 }
