@@ -239,3 +239,8 @@ input:focus {
 .ant-modal-mask {
     z-index: 9999998 !important;
 }
+
+
+.leaflet-container{
+  cursor: pointer !important;
+}

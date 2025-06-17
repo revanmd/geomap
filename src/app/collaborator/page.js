@@ -12,6 +12,7 @@ import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
 import { useRouter } from "next/navigation";
+import { useGps } from "@/context/gpsContext";
 
 // Custom hooks
 import useMapInteraction from "@/hooks/useMapInteraction";
@@ -36,6 +37,7 @@ export default function Collaborator() {
     const { showMessage } = useMessage()
     const { showLoading, hideLoading } = useLoading();
     const { username, userType } = useUser();
+    const { isGpsLoading } = useGps();
 
     // Custom hooks
     const mapInteraction = useMapInteraction()
@@ -463,6 +465,15 @@ export default function Collaborator() {
             }
         };
     }, [uploadedImage]);
+
+    // Effect to show/hide loading screen based on GPS state
+    useEffect(() => {
+        if (isGpsLoading) {
+            showLoading("Mengambil lokasi GPS...");
+        } else {
+            hideLoading();
+        }
+    }, [isGpsLoading, showLoading, hideLoading]);
 
     return (
         <main className="h-[100dvh] w-screen relative">

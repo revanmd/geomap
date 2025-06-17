@@ -10,6 +10,7 @@ export const GpsProvider = ({ children }) => {
   const [gpsLocation, setGpsLocation] = useState(null);
   const [gpsTimestamp, setGpsTimestamp] = useState(null);
   const [isGpsActive, setIsGpsActive] = useState(false);
+  const [isGpsLoading, setIsGpsLoading] = useState(false);
 
   // Check if GPS data is fresh (within 30 seconds)
   const isGpsFresh = useCallback(() => {
@@ -24,6 +25,7 @@ export const GpsProvider = ({ children }) => {
     setGpsLocation(location);
     setGpsTimestamp(Date.now());
     setIsGpsActive(true);
+    setIsGpsLoading(false);
   }, []);
 
   // Clear GPS data
@@ -31,6 +33,7 @@ export const GpsProvider = ({ children }) => {
     setGpsLocation(null);
     setGpsTimestamp(null);
     setIsGpsActive(false);
+    setIsGpsLoading(false);
   }, []);
 
   // Get cached GPS location if fresh, null if stale or not available
@@ -46,24 +49,46 @@ export const GpsProvider = ({ children }) => {
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const location = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          updateGpsLocation(location);
-          resolve(location);
-        },
-        (error) => {
+      setIsGpsLoading(true);
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          setIsGpsLoading(false);
+          reject(new Error('GPS timeout: Could not get location within 20 seconds'));
+        }, 20000); // 20 seconds timeout
+      });
+
+      // Create the geolocation promise
+      const geoPromise = new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const location = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            };
+            updateGpsLocation(location);
+            resolve(location);
+          },
+          (error) => {
+            setIsGpsLoading(false);
+            reject(error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 20000, // Match the timeout promise
+            maximumAge: 0 // This ensures we get a fresh position
+          }
+        );
+      });
+
+      // Race between timeout and geolocation
+      Promise.race([geoPromise, timeoutPromise])
+        .then(resolve)
+        .catch((error) => {
+          setIsGpsLoading(false);
           reject(error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0 // This ensures we get a fresh position
-        }
-      );
+        });
     });
   }, [updateGpsLocation]);
 
@@ -81,6 +106,7 @@ export const GpsProvider = ({ children }) => {
     gpsLocation,
     gpsTimestamp,
     isGpsActive,
+    isGpsLoading,
     
     // Functions
     updateGpsLocation,
