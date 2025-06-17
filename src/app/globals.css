@@ -247,5 +247,12 @@ input:focus {
 }
 
 svg path.leaflet-interactive {
-  pointer-events: none !important
+  cursor: pointer !important;
+  pointer-events: none !important;
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none;    /* Firefox */
+  -ms-user-select: none;     /* IE10+/Edge */
+  user-select: none;         /* Standard */
+  
+  -webkit-tap-highlight-color: transparent; /* iOS Safari */
 }
