@@ -198,3 +198,44 @@ input:focus {
 .ant-select-dropdown {
   z-index: 999999999999 !important; /* Increase as needed */
 }
+
+/* Image Preview Modal */
+.image-preview-modal {
+    padding: 0 !important;
+}
+
+.image-preview-modal .ant-modal-content {
+    padding: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    height: 100vh;
+}
+
+.image-preview-modal .ant-modal-body {
+    padding: 0 !important;
+    height: 100%;
+}
+
+/* Make sure the close button is visible */
+.image-preview-modal .ant-modal-close {
+    color: white !important;
+}
+
+/* Add zoom animation for the preview */
+.image-preview-modal img {
+    transition: transform 0.2s ease-in-out;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Ensure modal is above drawer */
+.ant-modal-wrap {
+    z-index: 9999999 !important;
+}
+
+.ant-modal-mask {
+    z-index: 9999998 !important;
+}

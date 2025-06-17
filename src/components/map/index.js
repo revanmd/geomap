@@ -26,11 +26,8 @@ export default function Map({
 }) {
   const { showLoading, hideLoading } = useLoading();
   const {
-    gpsLocation,
-    updateGpsLocation,
-    getCachedGpsLocation,
     hasGpsPermission,
-    isGpsFresh
+    getCurrentPosition
   } = useGps();
 
   const [zoom, setZoom] = useState(11)
@@ -41,8 +38,6 @@ export default function Map({
   const {
     mapContainerRef,
     setCenter,
-    addLayer,
-    removeLayer,
     setGpsLocation,
     getGpsLocation,
     getMarkerAddLocation,
@@ -64,100 +59,45 @@ export default function Map({
     onReleaseMap: callbackReleaseMap
   });
 
-  // Function to use cached GPS location if available and fresh
-  const handleCachedGpsLocation = () => {
-    const cachedLocation = getCachedGpsLocation();
-    if (cachedLocation) {
+  // Function to fetch fresh GPS location
+  const onGeolocationUpdate = async () => {
+    try {
+      showLoading("Mohon tunggu ya, Kami sedang mencari lokasi Anda ..");
       setIsGpsPositioning(true);
-      showLoading("Menggunakan lokasi tersimpan...");
-      setGpsLocation(cachedLocation, 200, 17, () => {
-        localStorage.setItem("gps_location", "allowed")
+      
+      const newLocation = await getCurrentPosition();
+      setGpsLocation(newLocation, 200, 17, () => {
+        localStorage.setItem("gps_location", "allowed");
         setIsActiveGPS(true);
         setIsGpsPositioning(false);
         hideLoading();
       });
-      return true;
-    }
-    return false;
-  };
-
-  // Function to fetch fresh GPS location
-  const fetchFreshGpsLocation = () => {
-    showLoading("Mohon tunggu ya, Kami sedang mencari lokasi Anda ..");
-    setIsGpsPositioning(true);
-
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          // Success - GPS found location
-          const newLocation = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-
-          // Update global GPS state
-          updateGpsLocation(newLocation);
-
-          setGpsLocation(newLocation, 200, 17, () => {
-            // This callback runs after the map has centered to the GPS position
-            localStorage.setItem("gps_location", "allowed")
-            setIsActiveGPS(true); // Close modal only on success
-            setIsGpsPositioning(false);
-            hideLoading(); // Hide loading only after map has centered
-          });
-        },
-        (error) => {
-          console.error("Geolocation error:", error.message);
-          localStorage.setItem("gps_location", "not-allowed")
-          setIsGpsPositioning(false);
-          hideLoading();
-
-          // Show specific error message based on error type
-          let errorMessage = "Tidak dapat membaca GPS pada lokasi Anda";
-          if (error.code === error.TIMEOUT) {
-            errorMessage = "Tidak dapat membaca GPS pada lokasi Anda - waktu tunggu habis";
-          } else if (error.code === error.PERMISSION_DENIED) {
-            errorMessage = "Akses lokasi ditolak. Silakan izinkan akses lokasi";
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            errorMessage = "Tidak dapat membaca GPS pada lokasi Anda - sinyal tidak tersedia";
-          }
-
-          // Show error message to user
-          if (typeof showMessage === 'function') {
-            showMessage(errorMessage, <CancleIcon />);
-          } else {
-            alert(errorMessage);
-          }
-
-          // Keep modal open for retry
-          setIsActiveGPS(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000, // Increased to 15 seconds for better GPS acquisition
-          maximumAge: 0    // no cached positions
-        }
-      );
-    } else {
+    } catch (error) {
+      console.error("Geolocation error:", error.message);
+      localStorage.setItem("gps_location", "not-allowed");
       setIsGpsPositioning(false);
       hideLoading();
-      const errorMessage = "GPS tidak didukung oleh browser Anda";
+
+      // Show specific error message based on error type
+      let errorMessage = "Tidak dapat membaca GPS pada lokasi Anda";
+      if (error.code === 3) { // TIMEOUT
+        errorMessage = "Tidak dapat membaca GPS pada lokasi Anda - waktu tunggu habis";
+      } else if (error.code === 1) { // PERMISSION_DENIED
+        errorMessage = "Akses lokasi ditolak. Silakan izinkan akses lokasi";
+      } else if (error.code === 2) { // POSITION_UNAVAILABLE
+        errorMessage = "Tidak dapat membaca GPS pada lokasi Anda - sinyal tidak tersedia";
+      }
+
+      // Show error message to user
       if (typeof showMessage === 'function') {
         showMessage(errorMessage, <CancleIcon />);
       } else {
         alert(errorMessage);
       }
-      setIsActiveGPS(false)
+
+      setIsActiveGPS(false);
     }
   };
-
-  const onGeolocationUpdate = () => {
-    // First try to use cached GPS location if it's fresh (within 30 seconds)
-    if (!handleCachedGpsLocation()) {
-      // If no cached location or it's stale, fetch fresh GPS location
-      fetchFreshGpsLocation();
-    }
-  }
 
   useEffect(() => {
     // add layer to the map
@@ -206,7 +146,6 @@ export default function Map({
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// SEARCH FUNCTIONALITY
-  const [searchQuery, setSearchQuery] = useState("");
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [isDropdownSearchVisible, setDropdownSearchVisible] = useState(false);
 
@@ -246,7 +185,6 @@ export default function Map({
     const lon = parseFloat(location.lon);
 
     setCenter([lat, lon], 18); // Move map to selected location
-    setSearchQuery(location.display_name); // Update input field with selected location
     setSearchSuggestions([]); // Clear suggestions
     setDropdownSearchVisible(false);
   };

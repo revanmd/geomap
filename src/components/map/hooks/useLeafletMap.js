@@ -9,7 +9,7 @@ import { markerService } from "@/services/markerService";
 
 export default function useLeafletMap({
   event,
-  center = [-7.5360639, 112.2384017],
+  center,
   zoom = 13,
   markers = [],
   onClickMarker,
@@ -274,7 +274,14 @@ export default function useLeafletMap({
   }, []);
 
   const getMarkerAddLocation = useCallback(() => {
-    return markerAddRef.current.getLatLng();
+    if (markerAddRef.current) {
+      const latLng = markerAddRef.current.getLatLng();
+      return {
+        lat: latLng.lat,
+        lng: latLng.lng
+      };
+    }
+    return null;
   }, []);
 
   const setBaseMap = useCallback((newBaseMap) => {
@@ -350,11 +357,21 @@ export default function useLeafletMap({
   const initializeMarkers = useCallback((initialMarkers) => {
     if (!markerLayerRef.current || !mapInstanceRef.current) return;
 
+    // Clear existing markers
     markerLayerRef.current.clearLayers();
     setMarkerData([]);
 
+    if (!Array.isArray(initialMarkers)) {
+      console.error("Invalid markers data:", initialMarkers);
+      return;
+    }
 
     const newMarkers = initialMarkers.map(({ id, location, commodity }) => {
+      if (!id || !location?.lat || !location?.lon) {
+        console.error("Invalid marker data:", { id, location, commodity });
+        return null;
+      }
+
       const { lat, lon } = location;
       let iconOptions;
       switch (commodity) {
@@ -371,56 +388,53 @@ export default function useLeafletMap({
           iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
       }
 
-      const marker = L.marker([lat, lon], { icon: L.icon(iconOptions) }).addTo(markerLayerRef.current);
-      marker.on("click", () => onClickMarker && onClickMarker({ id }));
+      const marker = L.marker([lat, lon], { icon: L.icon(iconOptions) });
+      
+      // Add click handler
+      marker.on("click", () => {
+        if (onClickMarker) {
+          onClickMarker({ id });
+        }
+      });
+
+      // Add marker to layer
+      markerLayerRef.current.addLayer(marker);
 
       return { id, marker, lat, lon, commodity };
-    });
+    }).filter(Boolean); // Remove null entries
 
     setMarkerData(newMarkers);
-  }, []);
+  }, [onClickMarker]);
 
-  // Function to append a new marker while keeping data consistent
-  const appendMarker = useCallback((type, id) => {
-    if (!markerLayerRef.current || !markerAddRef.current) return;
+  const appendMarker = useCallback((commodity, id) => {
+    if (!mapInstanceRef.current || !markerLayerRef.current) return;
 
-    const currentMarkerAddPosition = markerAddRef.current.getLatLng();
-    const { lat, lng } = currentMarkerAddPosition;
+    const markerLocation = getMarkerAddLocation();
+    if (!markerLocation) return;
 
-    let iconOptions;
-    switch (type) {
-      case "padi":
-        iconOptions = { iconUrl: "/marker-padi.png", iconSize: [32, 38] };
-        break;
-      case "jagung":
-        iconOptions = { iconUrl: "/marker-jagung.png", iconSize: [32, 38] };
-        break;
-      case "tebu":
-        iconOptions = { iconUrl: "/marker-tebu.png", iconSize: [32, 38] };
-        break;
-      default:
-        iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
+    // Remove the temporary marker
+    if (markerAddRef.current && markerAddRef.current._leaflet_id) {
+      mapInstanceRef.current.removeLayer(markerAddRef.current);
+      markerAddRef.current = null;
     }
 
-    const newMarker = L.marker([lat, lng], {
-      icon: L.icon(iconOptions),
-    }).addTo(markerLayerRef.current);
+    // Add the new permanent marker
+    const newMarker = L.marker([markerLocation.lat, markerLocation.lng], {
+      icon: L.icon({
+        iconUrl: `/marker-${commodity}.png`,
+        iconSize: [32, 38],
+      }),
+    });
 
-    newMarker.on("click", () => {
+    newMarker.on('click', () => {
       if (onClickMarker) {
         onClickMarker({ id });
       }
     });
 
-    setMarkerData((prevMarkers) => [
-      ...prevMarkers,
-      { id, marker: newMarker, lat, lng, type },
-    ]);
-
-    if (markerAddRef.current && markerAddRef.current._leaflet_id) {
-      mapInstanceRef.current.removeLayer(markerAddRef.current);
-    }
-  }, []);
+    markerLayerRef.current.addLayer(newMarker);
+    setMarkerData(prev => [...prev, { id, marker: newMarker }]);
+  }, [onClickMarker]);
 
   const removeMarker = useCallback((id) => {
     if (!markerLayerRef.current) return;

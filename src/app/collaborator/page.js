@@ -1,32 +1,27 @@
 "use client"
 
-import { Map, SquareMenu, CircleUserRound, ArrowLeft, X, Camera, Minus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Webcam from "react-webcam";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DatePicker, Drawer, Form, Input, Modal, Select } from "antd";
+import { Modal } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { useUser } from "@/context/userContext";
 import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
-import { CapitalizeFirstLetter, ConvertCommodityTypeToIndonesianCommodity, ConvertDateMonthToIndonesianMonth, ConvertIsoToIndonesianDate } from "@/utility/utils";
 import { useRouter } from "next/navigation";
-import dayjs from "dayjs";
 
 // Custom hooks
 import useMapInteraction from "@/hooks/useMapInteraction";
+import useSurveyForm from "@/hooks/useSurveyForm";
 
-// Components
-import CameraCapture from "@/components/collaborator/CameraCapture";
-import CommoditySelector from "@/components/collaborator/CommoditySelector";
 import PlantingHistoryForm from "@/components/collaborator/PlantingHistoryForm";
 import MarkerDetail from "@/components/collaborator/MarkerDetail";
-import SummaryStats from "@/components/collaborator/SummaryStats";
 import NavigationBar from "@/components/collaborator/NavigationBar";
 import SurveyDrawer from "@/components/collaborator/SurveyDrawer";
+import CameraCapture from "@/components/collaborator/CameraCapture";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -44,6 +39,23 @@ export default function Collaborator() {
 
     // Custom hooks
     const mapInteraction = useMapInteraction()
+    const surveyForm = useSurveyForm({
+        userType,
+        onSuccess: (data) => {
+            if (event === "summary") {
+                mapInteraction.fetchSelfMarkers();
+            }
+            if (mapFunctions) {
+                mapFunctions.appendMarker(data.commodity, data.id);
+            }
+            setEvent("view");
+            setSurveyStep(0);
+            resetSurvey();
+        },
+        onError: (error) => {
+            showMessage(error.message || "Gagal menambahkan komoditas", <CancleIcon />);
+        }
+    });
 
     ////////////////////////////////
     // PROPS DRILLDOWN
@@ -56,22 +68,22 @@ export default function Collaborator() {
     const [event, setEvent] = useState('view')
     const [surveyStep, setSurveyStep] = useState(0)
     const [screen, setScreen] = useState('minimize')
+    const [isWebcamActive, setIsWebcamActive] = useState(false)
+    const [capturedImage, setCapturedImage] = useState("")
 
     const callbackPressMap = () => {
         resetSurvey()
         setSurveyStep(1)
     }
 
-    const callbackClickMarker = (params) => {
-        setEvent("view")
-        fetchMarkerDetail(params?.id)
-    }
-
-    const clickedAddMarker = () => {
-        mapFunctions.onGeolocationUpdate()
-        setEvent('survey')
-    }
-
+    const callbackClickMarker = useCallback((params) => {
+        if (!params?.id) {
+            showMessage("ID marker tidak ditemukan", <CancleIcon />);
+            return;
+        }
+        setEvent("view");
+        fetchMarkerDetail(params.id);
+    }, []);
 
     ////////////////////////////////////////////////////////////////
     //// DETAIL MARKER
@@ -82,119 +94,110 @@ export default function Collaborator() {
     const [markerDetail, setMarkerDetail] = useState(null)
     const [uploadedImage, setUploadedImage] = useState("")
 
-    // Fetch and display uploaded image
-    const fetchImage = async (filename) => {
+
+    const fetchMarkerDetail = async (markerId) => {
+        if (!markerId) {
+            showMessage("ID marker tidak ditemukan", <CancleIcon />);
+            return;
+        }
+
+        showLoading("Mohon tunggu ...");
         try {
-            const blob = await fileService.getFile(filename);
-            const url = URL.createObjectURL(blob);
-            setUploadedImage(url);
+            const response = await markerService.getMarkerById(markerId);
+            if (!response?.data) {
+                throw new Error("Data marker tidak ditemukan");
+            }
+
+            const marker = response.data;
+
+            // Fetch the image first
+            try {
+                const blob = await fileService.getFile(marker.photo);
+                const imageUrl = URL.createObjectURL(blob);
+                setUploadedImage(imageUrl);
+                // Store both the URL and the original filename
+                surveyForm.setImageData(imageUrl, marker.photo);
+            } catch (imageError) {
+                console.error("Failed to fetch image:", imageError);
+                setUploadedImage("");
+                surveyForm.setImageData("", "");
+            }
+
+            // Set marker data
+            setMarkerDetail(marker);
+            surveyForm.setSurveyCommodity(marker.commodity || "");
+            surveyForm.setSurveyHST(marker.hst?.toString() || "");
+            surveyForm.handleHistoryChange(marker.planting_history || null);
+            setIsDetailOpen(true);
         } catch (error) {
-            console.error("Failed to fetch image:", error);
+            console.error("Error fetching marker:", error);
+            showMessage(error.message || "Gagal mengambil detail marker", <CancleIcon />);
+            setIsDetailOpen(false);
+            setUploadedImage("");
+            surveyForm.setImageData("", "");
+        } finally {
+            hideLoading();
         }
     };
 
-    const fetchMarkerDetail = async (markerId) => {
-        showLoading("Mohon tunggu ...")
-        try {
-            const marker = await markerService.getMarkerById(markerId)
-            await fetchImage(marker?.data?.photo)
-            setMarkerDetail(marker?.data)
-            setSurveyCommodity(marker?.data.commodity)
-            setSurveyHST(marker?.data.hst)
-            setDataHistory(marker?.data.planting_history)
-            setIsDetailOpen(true)
-        } catch (error) {
-        } finally {
-            hideLoading()
-        }
-    }
-
     const onCloseDetail = () => {
-        setIsDetailOpen(false)
-    }
+        if (uploadedImage && uploadedImage.startsWith('blob:')) {
+            URL.revokeObjectURL(uploadedImage);
+        }
+        setIsDetailOpen(false);
+        setUploadedImage("");
+        surveyForm.resetForm();
+    };
 
     const onEditDetail = () => {
-        setIsDetailOpen(false)
-        setIsEditOpen(true)
-    }
+        setIsDetailOpen(false);
+        setIsEditOpen(true);
+        setSurveyStep(1);  // Set survey step to show the drawer
+        setEvent("survey"); // Set event to survey mode
+    };
     const onDeleteDetail = () => {
         setIsDeleteOpen(true)
     }
 
-    const onCloseEdit = () => {
-        setIsEditOpen(false)
-        setIsDetailOpen(true)
-        // Clear captured image when closing edit without saving
-        setCapturedImage("")
-    }
-
-    const handleEditPhoto = () => {
-        setIsEditOpen(false)
-        setIsWebcamActive(true)
-    }
 
     const handleFinishEdit = async () => {
-        // Prevent multiple submissions
-        if (isSubmitting) return;
-
-        if (userType === "agronomist" && !surveyHST) {
-            showMessage("HST wajib diisi untuk Agronomist", <CancleIcon />)
+        if (!markerDetail?.id) {
+            showMessage("ID marker tidak ditemukan", <CancleIcon />);
             return;
         }
 
-        setIsSubmitting(true);
-        showLoading("Mohon tunggu ...")
-        
+        showLoading("Mohon tunggu ...");
         try {
-            let filename = markerDetail.photo
-            if (capturedImage != "") {
-                filename = await uploadFile(capturedImage, `${surveyCommodity}.png`)
+            // Prepare location data from original marker
+            const location = markerDetail.location ? {
+                lat: markerDetail.location.lat,
+                lon: markerDetail.location.lon
+            } : null;
+
+            // Update marker with original location
+            const updatedData = await surveyForm.updateMarker(markerDetail.id, location);
+            
+            // Update marker on map if we have valid data
+            if (mapFunctions && updatedData?.location?.lat && updatedData?.location?.lon) {
+                mapFunctions.updateMarker(
+                    markerDetail.id,
+                    [updatedData.location.lat, updatedData.location.lon],
+                    updatedData.commodity || surveyForm.surveyCommodity
+                );
             }
 
-            if (filename) {
-                const marker = {
-                    photo: filename,
-                    commodity: surveyCommodity,
-                    location: {
-                        lat: markerDetail?.location?.lat,
-                        lon: markerDetail?.location?.lon
-                    },
-                    hst: parseInt(surveyHST) || 0,
-                    planting_history: dataHistory
-                }
+            // Refresh marker detail data to show updated information
+            await fetchMarkerDetail(markerDetail.id);
 
-                // Update marker
-                const response = await markerService.updateMarker(markerDetail?.id, marker);
-
-                // Update the marker detail with new data
-                setMarkerDetail(response?.data);
-
-                // Flagging as success
-                mapFunctions.updateMarker(response?.data?.id, [markerDetail?.location?.lat, markerDetail?.location?.lon], surveyCommodity)
-                showMessage("Komoditas berhasil diubah", <ChecklistIcon />)
-
-                // Close edit and return to detail view
-                setIsEditOpen(false)
-                setIsDetailOpen(true)
-                
-                // Clear captured image but keep other data for detail view
-                setCapturedImage("")
-            } else {
-                showMessage("Gagal mengupload foto", <CancleIcon />)
-            }
-
-            if (event == "summary") {
-                mapInteraction.fetchSelfMarkers()
-            }
-
+            showMessage("Komoditas berhasil diubah", <ChecklistIcon />);
+            setIsDetailOpen(false);
         } catch (error) {
-            console.log(error)
-            showMessage("Gagal menambahkan komoditas", <CancleIcon />)
+            console.error("Error updating marker:", error);
+            showMessage(error.message || "Gagal mengubah komoditas", <CancleIcon />);
         } finally {
-            setIsSubmitting(false);
-            hideLoading()
+            hideLoading();
         }
-    }
+    };
 
     const handleCancelDelete = () => {
         setIsDeleteOpen(false)
@@ -222,38 +225,7 @@ export default function Collaborator() {
         setIsDetailOpen(false)
     }
 
-    ////////////////////////////////////////////////////////////////
-    //// SURVEY
-
-    const [surveyCommodity, setSurveyCommodity] = useState("")
-    const [surveyHST, setSurveyHST] = useState("")
-    const [isSubmitting, setIsSubmitting] = useState(false)
-
-    ////////////////////////////////////////////////////////////////
-    /// HISTORY TANAM
-
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false)
-    const [dataHistory, setDataHistory] = useState()
-
-    ////////////////////////////////////////////////////////////////
-    //// WEBCAM
-
-    const [isWebcamActive, setIsWebcamActive] = useState(false)
-    const webcamRef = useRef(null)
-    const [capturedImage, setCapturedImage] = useState("");
-
-    ////////////////////////////////
-    /// SUMMARY
-
     const [summary, setSummary] = useState(null)
-
-    ////////////////////////////////////////////////////////////////
-    //// LEADERBOARD
-    const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
-
-    const clickedCommodity = (commodityType) => {
-        setSurveyCommodity(commodityType)
-    }
 
     const handleBackSurvey = () => {
         if (event == "survey" && surveyStep == 0) {
@@ -270,112 +242,59 @@ export default function Collaborator() {
     }
 
     const handleSurveyPhoto = () => {
-        setSurveyStep(2)
-        setIsWebcamActive(true)
-    }
+        setIsWebcamActive(true);
+        setSurveyStep(2);
+    };
 
-    const onChangeHST = (event) => {
-        setSurveyHST(event?.target?.value)
-    }
+    const handleCapturePhoto = (imageSrc) => {
+        setCapturedImage(imageSrc);
+        surveyForm.setImageData(imageSrc);
+    };
+
+    const handleSavePhoto = () => {
+        setIsWebcamActive(false);
+        setSurveyStep(1);
+    };
+
+    const handleRetakePhoto = () => {
+        setCapturedImage("");
+        surveyForm.setImageData("");
+    };
+
+    const handleCloseCamera = () => {
+        setIsWebcamActive(false);
+        setSurveyStep(1);
+        if (!surveyForm.capturedImage && !surveyForm.uploadedImage) {
+            setCapturedImage("");
+            surveyForm.setImageData("");
+        }
+    };
 
     const resetSurvey = () => {
-        if (event == "survey") {
-            mapFunctions?.removeMarkerAdd()
+        if (mapFunctions && event === "survey") {
+            mapFunctions.removeMarkerAdd();
         }
-        setDataHistory()
-        setSurveyHST("")
-        setSurveyCommodity("")
-        setSurveyStep(0)
-        setCapturedImage("")
-        setIsSubmitting(false)
+        surveyForm.resetForm();
     }
 
     const finishSurvey = async () => {
-        // Prevent multiple submissions
-        if (isSubmitting) return;
-
-        setIsSubmitting(true);
         showLoading("Mohon tunggu ...")
-        
         try {
-            const filename = await uploadFile(capturedImage, `${surveyCommodity}.png`)
-            if (filename) {
-                // Prepare marker
-                const markerLocation = mapFunctions.getMarkerAddLocation()
-                const marker = {
-                    photo: filename,
-                    commodity: surveyCommodity,
-                    location: {
-                        lat: markerLocation.lat,
-                        lon: markerLocation.lng
-                    },
-                    hst: parseInt(surveyHST) || 0,
-                    planting_history: dataHistory
-                }
-
-                // Create marker
-                const response = await markerService.createMarker(marker);
-
-                // Flagging as success
-                mapFunctions.appendMarker(surveyCommodity, response?.data?.id)
-                showMessage("Komoditas berhasil ditambah", <ChecklistIcon />)
-            } else {
-                showMessage("Gagal mengupload foto", <CancleIcon />)
+            const markerLocation = mapFunctions.getMarkerAddLocation();
+            if (!markerLocation) {
+                throw new Error("Lokasi marker tidak ditemukan. Silakan pilih lokasi pada peta terlebih dahulu.");
             }
 
+            await surveyForm.submitForm({
+                lat: markerLocation.lat,
+                lon: markerLocation.lng
+            });
+            
+            showMessage("Komoditas berhasil ditambahkan", <ChecklistIcon />);
         } catch (error) {
-            console.log(error)
-            showMessage("Gagal menambahkan komoditas", <CancleIcon />)
+            showMessage(error.message || "Gagal menambahkan komoditas", <CancleIcon />);
         } finally {
-            resetSurvey()
-            setEvent("view")
-            setIsSubmitting(false);
-            hideLoading()
-        }
-    }
-
-    const handleKeyPress = (e) => {
-        // Prevent anything that's not a digit
-        if (!/^\d$/.test(e.key)) {
-            e.preventDefault();
-        }
-    };
-
-    ////////////////////////////////////////////////////////////////
-    //// WEBCAM
-
-    const captureWebcam = useCallback(() => {
-        if (webcamRef.current) {
-            const imageSrc = webcamRef.current.getScreenshot();
-            setCapturedImage(imageSrc);
-        }
-    }, [webcamRef]);
-    const videoConstraints = {
-        width: { ideal: 1280 }, // HD resolution is usually supported
-        height: { ideal: 720 },
-        facingMode: "environment"
-    };
-
-    const handleWebcamCaptured = () => {
-        setUploadedImage(capturedImage)
-        setIsWebcamActive(false);
-        if (event == "survey") {
-            setSurveyStep(1)
-        } else {
-            setIsEditOpen(true)
-        }
-    }
-
-    ////////////////////////////////
-    /// SUMMARY
-
-    const fetchSummary = async () => {
-        try {
-            const summary = await markerService.summary()
-            console.log(summary)
-            setSummary(summary.data)
-        } catch (error) {
-
+            hideLoading();
         }
     }
 
@@ -409,32 +328,6 @@ export default function Collaborator() {
         }
     }
 
-    const uploadFile = async (base64Image, filename) => {
-        try {
-            const response = await fileService.uploadFile(base64Image, filename)
-            return response.data.filename
-        } catch (error) {
-            return null
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////
-    //// CALLBACK FUNCTIONS WITH DEBOUNCE PROTECTION
-
-    // Handle submit with debounce protection
-    const handleFinishSurvey = useCallback(() => {
-        if (isSubmitting) return;
-        finishSurvey();
-    }, [isSubmitting, userType, surveyHST, capturedImage, surveyCommodity, dataHistory, mapFunctions]);
-
-    // Handle edit submit with debounce protection
-    const handleFinishEditWithDebounce = useCallback(() => {
-        if (isSubmitting) return;
-        handleFinishEdit();
-    }, [isSubmitting, userType, surveyHST, capturedImage, surveyCommodity, dataHistory, markerDetail]);
-
-    ////////////////////////////////
-    /// NAVIGATION
 
     const handleMenuSurvey = async () => {
         showLoading("Mohon tunggu..");
@@ -484,8 +377,13 @@ export default function Collaborator() {
 
     const handleNavigate = (view) => {
         if (event === view) return; // Don't reload if already on the same view
-        
-        switch(view) {
+
+        // Update URL with the new navigation state
+        const url = new URL(window.location.href);
+        url.searchParams.set('navigation', view);
+        window.history.pushState({}, '', url);
+
+        switch (view) {
             case 'view':
                 handleMenuSurvey();
                 break;
@@ -498,61 +396,48 @@ export default function Collaborator() {
         }
     };
 
-    ////////////////////////////////////////////////////////////////
-    /// HISTORY TANAM FUNCTIONS
-
     const onOpenHistory = () => {
-        if (event == "view") {
-            setIsEditOpen(false)
-        }
-
-        if (event == "survey") {
-            setSurveyStep(0)
-        }
-
-        setIsHistoryOpen(true)
-    }
-
-    const onCloseHistory = () => {
-        setIsHistoryOpen(false)
-        
-        if (event == "view") {
-            setIsEditOpen(true)
-        }
-
-        if (event == "survey") {
-            setSurveyStep(1)
-        }
-    }
+        surveyForm.setIsHistoryOpen(true);
+    };
 
     const handleFinishHistory = (formattedValues) => {
-        setDataHistory(formattedValues)
-        setIsHistoryOpen(false)
-
-        if (event == "view") {
-            setIsEditOpen(true)
+        surveyForm.handleHistoryChange(formattedValues);
+        if (isEditOpen) {
+            setIsEditOpen(true);
+        } else {
+            setSurveyStep(1);
         }
-
-        if (event == "survey") {
-            setSurveyStep(1)
-        }
-    }
-
-    ////////////////////////////////////////////////////////////////
-    //// LEADERBOARD
-
+    };
 
     useEffect(() => {
         if (typeof window != "undefined") {
             let navigation = new URLSearchParams(window.location.search);
-            if (navigation.get("navigation") == "summary") {
-                fetchSelfMarker();
-                setEvent("summary");
-            } else {
-                setEvent("view");
+            const navState = navigation.get("navigation");
+            
+            switch (navState) {
+                case "summary":
+                    fetchSelfMarker();
+                    setEvent("summary");
+                    break;
+                case "view":
+                    fetchMarker();
+                    setEvent("view");
+                    break;
+                case "account":
+                    router.replace("/account");
+                    break;
+                default:
+                    // Default to view if no navigation state or invalid state
+                    fetchMarker();
+                    setEvent("view");
+                    // Update URL to reflect default state
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('navigation', 'view');
+                    window.history.replaceState({}, '', url);
+                    break;
             }
         }
-    }, [])
+    }, []);
 
 
 
@@ -563,20 +448,6 @@ export default function Collaborator() {
     }, [mapFunctions])
 
 
-
-    const leaderboards = [
-        { "no": 1, "nama": "Sumanto", "point": 110 },
-        { "no": 2, "nama": "Cut Nyak Dien", "point": 110 },
-        { "no": 3, "nama": "Soedirman", "point": 110 },
-        { "no": 4, "nama": "Hatta", "point": 110 },
-        { "no": 5, "nama": "Raden Dewi", "point": 110 },
-        { "no": 6, "nama": "Cipto Mangunkusumo", "point": 110 },
-        { "no": 7, "nama": "Imam", "point": 110 },
-        { "no": 8, "nama": "Achmad Yani", "point": 110 },
-        { "no": 9, "nama": "Dewi Santika", "point": 110 },
-        { "no": 10, "nama": "Kartika", "point": 110 },
-    ]
-
     // Add cleanup effect
     useEffect(() => {
         return () => {
@@ -584,8 +455,17 @@ export default function Collaborator() {
         };
     }, [hideLoading]);
 
+    useEffect(() => {
+        // Cleanup function for image URLs
+        return () => {
+            if (uploadedImage && uploadedImage.startsWith('blob:')) {
+                URL.revokeObjectURL(uploadedImage);
+            }
+        };
+    }, [uploadedImage]);
+
     return (
-        <main>
+        <main className="h-[100dvh] w-screen relative">
             <MapComponent
                 event={event}
                 screen={screen}
@@ -669,7 +549,7 @@ export default function Collaborator() {
                             )
                         }
 
-                        <NavigationBar 
+                        <NavigationBar
                             currentView={event}
                             onNavigate={handleNavigate}
                         />
@@ -722,179 +602,16 @@ export default function Collaborator() {
                 )
             }
 
-            <SurveyDrawer 
-                surveyStep={surveyStep}
-                surveyCommodity={surveyCommodity}
-                surveyHST={surveyHST}
-                capturedImage={capturedImage}
-                uploadedImage={uploadedImage}
-                dataHistory={dataHistory}
-                userType={userType}
-                isHistoryOpen={isHistoryOpen}
-                isSubmitting={isSubmitting}
-                onCommoditySelect={setSurveyCommodity}
-                onHSTChange={(e) => setSurveyHST(e.target.value)}
-                onPhotoClick={() => {
-                    setSurveyStep(2);
-                    setIsWebcamActive(true);
-                }}
-                onHistoryClick={() => {
-                    if (event === "view") {
-                        setIsEditOpen(false);
-                    }
-                    setIsHistoryOpen(true);
-                }}
-                onFinish={handleFinishSurvey}
-                handleKeyPress={handleKeyPress}
+            <SurveyDrawer
+                isOpen={surveyStep === 1}
+                mode={isEditOpen ? "edit" : "create"}
+                surveyForm={surveyForm}
+                onPhotoClick={handleSurveyPhoto}
+                onHistoryClick={onOpenHistory}
+                onFinish={isEditOpen ? handleFinishEdit : finishSurvey}
             />
 
-            {/* Edit Drawer */}
-            {isEditOpen && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        zIndex: 999999,
-                        transform: 'translateY(0)',
-                        transition: 'transform 0.2s ease-out'
-                    }}
-                    className="bg-white w-screen animate-slide-up"
-                >
-                    <div className="flex justify-between items-center px-4 pt-4">
-                        <h1 className="text-base font-semibold text-black">Edit Komoditas</h1>
-                        <button 
-                            className="text-lg font-semibold text-black" 
-                            onClick={onCloseEdit}
-                        >
-                            <X />
-                        </button>
-                    </div>
-
-                    <h2 className="text-sm mt-4 px-4 font-medium">
-                        <span className="font-semibold text-red-600">*</span> Pilih Komoditas
-                    </h2>
-                    
-                    <CommoditySelector 
-                        selectedCommodity={surveyCommodity}
-                        onSelect={isSubmitting ? () => {} : setSurveyCommodity}
-                        disabled={isSubmitting}
-                    />
-
-                    <h2 className="text-sm mt-4 px-4 font-medium">
-                        Hari setelah Tanam
-                        <span className="font-light text-gray-500"> (Opsional)</span>
-                    </h2>
-                    <div className="mx-4 mt-2">
-                        <Input 
-                            className="input-custom" 
-                            placeholder="Masukkan HST"
-                            value={surveyHST}
-                            onChange={onChangeHST}
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            type="tel"
-                            onKeyPress={handleKeyPress}
-                            disabled={isSubmitting}
-                        />
-                    </div>
-
-                    <h2 className="text-sm mt-4 px-4 font-medium">
-                        <span className="font-semibold text-red-600">*</span> Foto komoditas
-                    </h2>
-                    <div className="px-4 mt-2">
-                        <div 
-                            className={`image-commodity-container-empty border rounded ${
-                                isSubmitting 
-                                    ? 'border-gray-200 cursor-not-allowed' 
-                                    : 'border-gray-300 cursor-pointer hover:border-blue-400'
-                            }`}
-                            onClick={isSubmitting ? () => {} : handleEditPhoto}
-                        >
-                            {(capturedImage || uploadedImage) && (
-                                <>
-                                    <img src={uploadedImage} className="image-commodity-container rounded" alt="Preview" />
-                                    <div className="absolute inset-0 bg-black opacity-50"></div>
-                                </>
-                            )}
-
-                            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
-                                <div className={(capturedImage || uploadedImage) ? "text-white" : "text-gray-500"}>
-                                    <Camera className="block w-full" size={16} />
-                                    <div className="mt-1 text-center">
-                                        {(capturedImage || uploadedImage) ? "Ganti Foto" : "Tambah foto komoditas"}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {dataHistory && (
-                        <div className="px-4 text-sm">
-                            <h2 className="mt-4 font-medium">History Tanam</h2>
-                            {[1, 2, 3].map((period) => {
-                                const commodity = dataHistory[`commodity_mt_${period}`];
-                                const tanam = dataHistory[`tanam_mt_${period}`];
-                                const panen = dataHistory[`panen_mt_${period}`];
-
-                                if (!commodity) return null;
-
-                                return (
-                                    <div key={period} className="flex justify-between mt-2">
-                                        <span>{ConvertCommodityTypeToIndonesianCommodity(commodity)}</span>
-                                        <span className="font-semibold">
-                                            {ConvertDateMonthToIndonesianMonth(tanam)}
-                                            &nbsp;-&nbsp;
-                                            {ConvertDateMonthToIndonesianMonth(panen)}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    <div className="mx-4">
-                        <button
-                            className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded w-full ${
-                                (surveyCommodity !== "" && !isSubmitting) ? 'bg-blue' : 'bg-blue-200'
-                            }`}
-                            disabled={!surveyCommodity || isSubmitting}
-                            onClick={handleFinishEditWithDebounce}
-                        >
-                            {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
-                        </button>
-                        <button
-                            className={`mb-4 mt-2 font-semibold text-center text-sm p-2 rounded border w-full ${
-                                isSubmitting 
-                                    ? 'text-gray-400 border-gray-200 cursor-not-allowed' 
-                                    : 'text-black border-gray-400 hover:bg-gray-50'
-                            }`}
-                            onClick={onOpenHistory}
-                            disabled={isSubmitting}
-                        >
-                            + Tambah Histori Tanam
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            <CameraCapture 
-                isActive={isWebcamActive}
-                capturedImage={capturedImage}
-                onCapture={setCapturedImage}
-                onSave={() => {
-                    setUploadedImage(capturedImage);
-                    setIsWebcamActive(false);
-                    if (event === "survey") {
-                        setSurveyStep(1);
-                    } else {
-                        setIsEditOpen(true);
-                    }
-                }}
-                onRetake={() => setCapturedImage("")}
-            />
-
-            <MarkerDetail 
+            <MarkerDetail
                 isOpen={isDetailOpen}
                 onClose={onCloseDetail}
                 onEdit={onEditDetail}
@@ -904,11 +621,18 @@ export default function Collaborator() {
                 isCurrentUser={markerDetail?.username === username}
             />
 
-            <PlantingHistoryForm 
-                isOpen={isHistoryOpen}
-                onClose={onCloseHistory}
+            <PlantingHistoryForm
+                isOpen={surveyForm.isHistoryOpen}
+                onClose={() => {
+                    surveyForm.setIsHistoryOpen(false);
+                    if (isEditOpen) {
+                        setIsEditOpen(true);
+                    } else {
+                        setSurveyStep(1);
+                    }
+                }}
                 onSave={handleFinishHistory}
-                initialData={dataHistory}
+                initialData={surveyForm.dataHistory}
             />
 
             <Modal
@@ -939,79 +663,14 @@ export default function Collaborator() {
 
             </Modal>
 
-            <Modal
-                open={isLeaderboardOpen}
-                zIndex={9999999}
-                footer={false}
-                closable={true}
-                onCancel={() => {
-                    setIsLeaderboardOpen(false)
-                }}
-                closeIcon={false}
-                className="modal-margin"
-                centered
-            >
-                <div className="">
-                    <div className="text-sm text-gray-500 mb-5">Update terakhir: 13 Jun 2025 13:28</div>
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="text-center">
-                            <div className="w-12 h-12 bg-green-800 rounded-full flex items-center justify-center mx-auto mb-1">
-                                <img src="/paddy.png" className="w-6 h-6" alt="Padi" />
-                            </div>
-                            <div className="text-lg font-semibold">156</div>
-                            <div className="text-xs text-gray-500">Padi</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-12 h-12 bg-yellow-700 rounded-full flex items-center justify-center mx-auto mb-1">
-                                <img src="/corn.png" className="w-6 h-6" alt="Jagung" />
-                            </div>
-                            <div className="text-lg font-semibold">118</div>
-                            <div className="text-xs text-gray-500">Jagung</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-12 h-12 bg-teal-700 rounded-full flex items-center justify-center mx-auto mb-1">
-                                <img src="/cane.png" className="w-6 h-6" alt="Tebu" />
-                            </div>
-                            <div className="text-lg font-semibold">95</div>
-                            <div className="text-xs text-gray-500">Tebu</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mx-auto mb-1 white">
-                                <img src="/others.png" className="w-6 h-6" alt="Lainnya" />
-                            </div>
-                            <div className="text-lg font-semibold">43</div>
-                            <div className="text-xs text-gray-500">Lainnya</div>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 overflow-hidden rounded-lg border">
-                        <table className="min-w-full ">
-                            <thead>
-                                <tr className="bg-gray-100">
-                                    <th className="text-left p-2 text-xs font-medium text-black">No</th>
-                                    <th className="text-left p-2 text-xs font-medium text-black">Nama</th>
-                                    <th className="text-right p-2 text-xs font-medium text-black">Jumlah Poin</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {leaderboards.map((item) => {
-                                    return (
-                                        <tr key={item.no} className="border-b border-gray-100 py-1">
-                                            <td className="p-2 text-sm text-gray-500">{item.no}</td>
-                                            <td className="p-2 text-sm">{item.nama}</td>
-                                            <td className="p-2 text-sm text-blue font-medium text-right">{item.point}</td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <button className="w-full bg-blue text-white font-medium py-2 rounded-lg mt-4">
-                        Lihat Semua
-                    </button>
-                </div>
-            </Modal>
+            <CameraCapture
+                isActive={isWebcamActive}
+                capturedImage={surveyForm.capturedImage}
+                onCapture={handleCapturePhoto}
+                onSave={handleSavePhoto}
+                onRetake={handleRetakePhoto}
+                onClose={handleCloseCamera}
+            />
         </main >
     )
 }

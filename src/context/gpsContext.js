@@ -38,6 +38,35 @@ export const GpsProvider = ({ children }) => {
     return isGpsFresh() ? gpsLocation : null;
   }, [isGpsFresh, gpsLocation]);
 
+  // Force get current GPS position
+  const getCurrentPosition = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation is not supported by your browser'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const location = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          updateGpsLocation(location);
+          resolve(location);
+        },
+        (error) => {
+          reject(error);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0 // This ensures we get a fresh position
+        }
+      );
+    });
+  }, [updateGpsLocation]);
+
   // Check if GPS permission is granted based on localStorage
   const hasGpsPermission = useCallback(() => {
     if (typeof window !== 'undefined') {
@@ -59,6 +88,7 @@ export const GpsProvider = ({ children }) => {
     getCachedGpsLocation,
     isGpsFresh,
     hasGpsPermission,
+    getCurrentPosition,
     
     // Utility functions
     getAge: () => gpsTimestamp ? Date.now() - gpsTimestamp : null,

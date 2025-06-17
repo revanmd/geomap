@@ -5,7 +5,7 @@ export default function OtherOptions({ onLogout }) {
         <div>
             <h2 className="font-semibold text-medium mb-3 mt-5">Lainnya</h2>
 
-            <div href="/help" className="flex items-center py-3">
+            <div href="/help" className="flex items-center py-1">
                 <HelpCircle size={18} className="text-gray-600 mr-2" />
                 <span className='text-sm font-regular text-black'>Pusat Bantuan</span>
             </div>

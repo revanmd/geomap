@@ -4,23 +4,27 @@ import CommoditySelector from "./CommoditySelector";
 import { ConvertCommodityTypeToIndonesianCommodity, ConvertDateMonthToIndonesianMonth } from "@/utility/utils";
 
 export default function SurveyDrawer({
-    surveyStep,
-    surveyCommodity,
-    surveyHST,
-    capturedImage,
-    uploadedImage,
-    dataHistory,
-    userType,
-    isSubmitting,
-    onCommoditySelect,
-    onHSTChange,
+    isOpen,
+    mode = "create", // "create" or "edit"
+    surveyForm,
     onPhotoClick,
     onHistoryClick,
     onFinish,
-    handleKeyPress,
-    isHistoryOpen
 }) {
-    if (surveyStep !== 1 || isHistoryOpen) return null;
+    const {
+        surveyCommodity,
+        surveyHST,
+        capturedImage,
+        uploadedImage,
+        dataHistory,
+        isSubmitting,
+        isHistoryOpen,
+        setSurveyCommodity,
+        handleHSTChange,
+        handleKeyPress,
+    } = surveyForm;
+
+    if (!isOpen || isHistoryOpen) return null;
  
     return (
         <div
@@ -35,7 +39,9 @@ export default function SurveyDrawer({
             className="bg-white w-screen animate-slide-up"
         >
             <div className="flex justify-between items-center px-4 pt-4">
-                <h1 className="text-base font-semibold text-black">Tandai dengan komoditas</h1>
+                <h1 className="text-base font-semibold text-black">
+                    {mode === "create" ? "Tandai dengan komoditas" : "Edit komoditas"}
+                </h1>
             </div>
 
             <h2 className="text-sm mt-4 px-4 font-medium">
@@ -44,26 +50,24 @@ export default function SurveyDrawer({
             
             <CommoditySelector 
                 selectedCommodity={surveyCommodity}
-                onSelect={isSubmitting ? () => {} : onCommoditySelect}
+                onSelect={isSubmitting ? () => {} : setSurveyCommodity}
                 disabled={isSubmitting}
             />
 
             <h2 className="text-sm mt-4 px-4 font-medium">
                 Hari setelah tanam
-                {userType !== "agronomist" && <span className="font-light text-gray-500"> (Opsional)</span>}
-                {userType === "agronomist" && <span className="font-semibold text-red-600"> *</span>}
+                <span className="font-light text-gray-500"> (Opsional)</span>
             </h2>
             <div className="mx-4 mt-2">
                 <Input 
                     className="input-custom" 
                     placeholder="Masukkan HST"
                     value={surveyHST}
-                    onChange={onHSTChange}
+                    onChange={handleHSTChange}
                     inputMode="numeric"
                     pattern="[0-9]*"
                     type="tel"
                     onKeyPress={handleKeyPress}
-                    required={userType === "agronomist"}
                     disabled={isSubmitting}
                 />
             </div>
@@ -80,18 +84,22 @@ export default function SurveyDrawer({
                     }`}
                     onClick={isSubmitting ? () => {} : onPhotoClick}
                 >
-                    {capturedImage && (
+                    {(capturedImage || uploadedImage) && (
                         <>
-                            <img src={uploadedImage} className="image-commodity-container rounded" alt="Preview" />
+                            <img 
+                                src={capturedImage || uploadedImage} 
+                                className="image-commodity-container rounded" 
+                                alt="Preview" 
+                            />
                             <div className="absolute inset-0 bg-black opacity-50"></div>
                         </>
                     )}
 
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 text-sm">
-                        <div className={capturedImage ? "text-white" : "text-gray-500"}>
+                        <div className={(capturedImage || uploadedImage) ? "text-white" : "text-gray-500"}>
                             <Camera className="block w-full" size={16} />
                             <div className="mt-1 text-center">
-                                {capturedImage ? "Ganti Foto" : "Tambah foto komoditas"}
+                                {(capturedImage || uploadedImage) ? "Ganti Foto" : "Tambah foto komoditas"}
                             </div>
                         </div>
                     </div>
@@ -125,12 +133,12 @@ export default function SurveyDrawer({
             <div className="mx-4">
                 <button
                     className={`mt-4 font-semibold text-white text-center text-sm p-2 rounded w-full ${
-                        (surveyCommodity !== "" && capturedImage && !isSubmitting) ? 'bg-blue' : 'bg-blue-200'
+                        (surveyCommodity !== "" && (capturedImage || uploadedImage) && !isSubmitting) ? 'bg-blue' : 'bg-blue-200'
                     }`}
-                    disabled={!(surveyCommodity !== "" && capturedImage) || isSubmitting}
+                    disabled={!(surveyCommodity !== "" && (capturedImage || uploadedImage)) || isSubmitting}
                     onClick={onFinish}
                 >
-                    {isSubmitting ? "Menyimpan..." : "Simpan Komoditas"}
+                    {isSubmitting ? "Menyimpan..." : mode === "create" ? "Simpan Komoditas" : "Simpan Perubahan"}
                 </button>
                 <button
                     className={`mb-4 mt-2 font-semibold text-center text-sm p-2 rounded border w-full ${
