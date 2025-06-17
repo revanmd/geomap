@@ -101,7 +101,6 @@ export default function Map({
 
   useEffect(() => {
     // add layer to the map
-    // addLayer('https://tile.digitalisasi-pi.com/data/merged_output_jatim_rgb/{z}/{x}/{y}.png')
     if (onMapReady) {
       onMapReady({
         appendMarker,
@@ -168,6 +167,7 @@ export default function Map({
         }
       );
 
+
       setSearchSuggestions(response.data);
       setDropdownSearchVisible(true);
     } catch (error) {
@@ -230,7 +230,6 @@ export default function Map({
                 className="text-sm focus:border-transparent focus:ring-0 focus:outline-none"
                 placeholder="Cari Lokasi"
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
                   debouncedFetchSearchSuggestions(e.target.value);
                 }}
                 onFocus={() => {

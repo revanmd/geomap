@@ -245,3 +245,7 @@ input:focus {
   cursor: pointer !important;
   pointer-events: auto !important
 }
+
+svg path.leaflet-interactive {
+  pointer-events: none !important
+}

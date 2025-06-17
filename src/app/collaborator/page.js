@@ -145,7 +145,7 @@ export default function Collaborator() {
     const onCloseDetail = () => {
         if (uploadedImage && uploadedImage.startsWith('blob:')) {
             URL.revokeObjectURL(uploadedImage);
-        }
+    }
         setIsDetailOpen(false);
         setUploadedImage("");
         surveyForm.resetForm();
@@ -379,11 +379,11 @@ export default function Collaborator() {
 
     const handleNavigate = (view) => {
         if (event === view) return; // Don't reload if already on the same view
-
+        
         // Update URL with the new navigation state
         const url = new URL(window.location.href);
         url.searchParams.set('navigation', view);
-        window.history.pushState({}, '', url);
+        window.history.pushState({}, '', url);s
 
         switch (view) {
             case 'view':
@@ -418,8 +418,8 @@ export default function Collaborator() {
             
             switch (navState) {
                 case "summary":
-                    fetchSelfMarker();
-                    setEvent("summary");
+                fetchSelfMarker();
+                setEvent("summary");
                     break;
                 case "view":
                     fetchMarker();
@@ -431,7 +431,7 @@ export default function Collaborator() {
                 default:
                     // Default to view if no navigation state or invalid state
                     fetchMarker();
-                    setEvent("view");
+                setEvent("view");
                     // Update URL to reflect default state
                     const url = new URL(window.location.href);
                     url.searchParams.set('navigation', 'view');
@@ -560,7 +560,7 @@ export default function Collaborator() {
                             )
                         }
 
-                        <NavigationBar
+                        <NavigationBar 
                             currentView={event}
                             onNavigate={handleNavigate}
                         />
@@ -613,7 +613,7 @@ export default function Collaborator() {
                 )
             }
 
-            <SurveyDrawer
+            <SurveyDrawer 
                 isOpen={surveyStep === 1}
                 mode={isEditOpen ? "edit" : "create"}
                 surveyForm={surveyForm}
@@ -622,7 +622,7 @@ export default function Collaborator() {
                 onFinish={isEditOpen ? handleFinishEdit : finishSurvey}
             />
 
-            <MarkerDetail
+            <MarkerDetail 
                 isOpen={isDetailOpen}
                 onClose={onCloseDetail}
                 onEdit={onEditDetail}
@@ -632,7 +632,7 @@ export default function Collaborator() {
                 isCurrentUser={markerDetail?.username === username}
             />
 
-            <PlantingHistoryForm
+            <PlantingHistoryForm 
                 isOpen={surveyForm.isHistoryOpen}
                 onClose={() => {
                     surveyForm.setIsHistoryOpen(false);
