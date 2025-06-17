@@ -243,4 +243,5 @@ input:focus {
 
 .leaflet-container{
   cursor: pointer !important;
+  pointer-events: auto !important
 }
