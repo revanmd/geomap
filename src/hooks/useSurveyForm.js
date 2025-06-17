@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { fileService } from "@/services/fileService";
 import { markerService } from "@/services/markerService";
 
-export default function useSurveyForm({ onSuccess, onError, userType }) {
+export default function useSurveyForm({ onSuccess, onError }) {
     const [surveyCommodity, setSurveyCommodity] = useState("");
     const [surveyHST, setSurveyHST] = useState("");
     const [capturedImage, setCapturedImage] = useState("");

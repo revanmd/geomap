@@ -238,7 +238,7 @@ export default function Map({
                 onBlur={() => {
                   setTimeout(() => {
                     setDropdownSearchVisible(false)
-                  }, 500)
+                  }, 300)
                 }}
               />
             </div>

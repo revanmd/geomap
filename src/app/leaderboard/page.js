@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Header from '@/components/leaderboard/Header';
-import BottomNav from '@/components/leaderboard/BottomNav';
+import BottomNav from '@/components/navigation/BottomNav';
 import LeaderboardTable from '@/components/leaderboard/LeaderboardTable';
 import PointsDisplay from '@/components/leaderboard/PointsDisplay';
 import Description from '@/components/leaderboard/Description';
@@ -16,7 +16,6 @@ export default function Progress() {
 
     const fetchLeaderboard = async () => {
         const response = await analyticService.getLeaderboard();
-        console.log(user)
         const data = response.data;
         if(data){
             const userLeaderboard = data.filter(item => item.username === user?.username);
@@ -41,7 +40,9 @@ export default function Progress() {
                 <LeaderboardTable data={leaderboardData} userRank={userRank} />
             </div>
 
-            <BottomNav />
+            <div className="fixed bottom-0 w-screen">
+                <BottomNav />
+            </div>
         </div>
     )
 }

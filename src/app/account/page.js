@@ -6,18 +6,16 @@ import Header from '@/components/account/Header';
 import Stats from '@/components/account/Stats';
 import AccountInfo from '@/components/account/AccountInfo';
 import OtherOptions from '@/components/account/OtherOptions';
-import BottomNav from '@/components/account/BottomNav';
-import { useLoading } from '@/context/loadingContext';
+import BottomNav from '@/components/navigation/BottomNav';
 import { useUser } from '@/context/userContext';
-import {authService} from '@/services/authService';
-import {markerService} from '@/services/markerService';
+import { authService } from '@/services/authService';
+import { markerService } from '@/services/markerService';
 
 export default function AccountReward() {
     const { user: userData, refreshUser, clearUser } = useUser();
     const [summaryData, setSummaryData] = useState()
 
     useEffect(() => {
-        // Refresh user data to ensure it's up to date
         refreshUser();
 
         const fetchSummary = async () => {
@@ -25,33 +23,15 @@ export default function AccountReward() {
             setSummaryData(summary.data)
         }
         fetchSummary()
-        
+
     }, [])
 
 
     const router = useRouter();
-    const { showLoading, hideLoading } = useLoading();
-
-    const handleMenuSurvey = () => {
-        showLoading("Mohon tunggu..")
-        setTimeout(() => {
-            router.push("/collaborator?navigation=view")
-            hideLoading()
-        }, 700)
-    }
-
-    const handleMenuSummary = () => {
-        showLoading("Mohon tunggu..")
-        setTimeout(() => {
-            router.push("/collaborator?navigation=summary")
-            hideLoading()
-        }, 700)
-    }
-
     const handleLogout = async () => {
         try {
             await authService.logout()
-            clearUser() // Clear user data from context
+            clearUser()
             router.push("/")
         } catch (error) { }
     }
@@ -65,11 +45,12 @@ export default function AccountReward() {
                     <AccountInfo user={userData} />
                     <OtherOptions onLogout={handleLogout} />
                 </div>
+
+
+                <div className="fixed bottom-0 w-screen">
+                    <BottomNav />
+                </div>
             </div>
-            <BottomNav
-                onMenuSurvey={handleMenuSurvey}
-                onMenuSummary={handleMenuSummary}
-            />
         </div>
     );
 }

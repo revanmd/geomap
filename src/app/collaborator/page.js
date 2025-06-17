@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { Modal } from "antd";
 import { useMessage } from "@/context/messageContext";
 import { useUser } from "@/context/userContext";
@@ -11,7 +11,6 @@ import { CancleIcon, ChecklistIcon, InfoIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
 import { useLoading } from "@/context/loadingContext";
 import { fileService } from "@/services/fileService";
-import { useRouter } from "next/navigation";
 import { useGps } from "@/context/gpsContext";
 
 // Custom hooks
@@ -20,9 +19,10 @@ import useSurveyForm from "@/hooks/useSurveyForm";
 
 import PlantingHistoryForm from "@/components/collaborator/PlantingHistoryForm";
 import MarkerDetail from "@/components/collaborator/MarkerDetail";
-import NavigationBar from "@/components/collaborator/NavigationBar";
 import SurveyDrawer from "@/components/collaborator/SurveyDrawer";
 import CameraCapture from "@/components/collaborator/CameraCapture";
+import BottomNav from "@/components/navigation/BottomNav";
+import { useSearchParams } from "next/navigation";
 
 // Dynamic Import Component
 const MapComponent = dynamic(() => import("@/components/map"), {
@@ -30,8 +30,6 @@ const MapComponent = dynamic(() => import("@/components/map"), {
 });
 
 export default function Collaborator() {
-    const router = useRouter()
-
     ////////////////////////////////
     // CONTEXT
     const { showMessage } = useMessage()
@@ -39,20 +37,17 @@ export default function Collaborator() {
     const { username, userType } = useUser();
     const { isGpsLoading } = useGps();
 
-    // Custom hooks
+    // CUSTOM HOOKS
     const mapInteraction = useMapInteraction()
     const surveyForm = useSurveyForm({
         userType,
         onSuccess: (data) => {
-            if (event === "summary") {
-                mapInteraction.fetchSelfMarkers();
-            }
             if (mapFunctions) {
                 mapFunctions.appendMarker(data.commodity, data.id);
+                setEvent("view");
+                setSurveyStep(0);
+                resetSurvey();
             }
-            setEvent("view");
-            setSurveyStep(0);
-            resetSurvey();
         },
         onError: (error) => {
             showMessage(error.message || "Gagal menambahkan komoditas", <CancleIcon />);
@@ -66,12 +61,11 @@ export default function Collaborator() {
         setMapFunctions(mapRefs)
     }
 
-    // form-filling, detail, tagging
+    // FORM-FILLING, DETAIL, TAGGING
     const [event, setEvent] = useState('view')
     const [surveyStep, setSurveyStep] = useState(0)
-    const [screen, setScreen] = useState('minimize')
+    const [screen] = useState('minimize')
     const [isWebcamActive, setIsWebcamActive] = useState(false)
-    const [capturedImage, setCapturedImage] = useState("")
 
     const callbackPressMap = () => {
         resetSurvey()
@@ -79,13 +73,10 @@ export default function Collaborator() {
     }
 
     const callbackClickMarker = useCallback((params) => {
-        if (!params?.id) {
-            showMessage("ID marker tidak ditemukan", <CancleIcon />);
-            return;
-        }
-        setEvent("view");
         fetchMarkerDetail(params.id);
+        setEvent("view");
     }, []);
+
 
     ////////////////////////////////////////////////////////////////
     //// DETAIL MARKER
@@ -143,11 +134,7 @@ export default function Collaborator() {
     };
 
     const onCloseDetail = () => {
-        if (uploadedImage && uploadedImage.startsWith('blob:')) {
-            URL.revokeObjectURL(uploadedImage);
-    }
         setIsDetailOpen(false);
-        setUploadedImage("");
         surveyForm.resetForm();
     };
 
@@ -178,7 +165,7 @@ export default function Collaborator() {
 
             // Update marker with original location
             const updatedData = await surveyForm.updateMarker(markerDetail.id, location);
-            
+
             // Update marker on map if we have valid data
             if (mapFunctions && updatedData?.location?.lat && updatedData?.location?.lon) {
                 mapFunctions.updateMarker(
@@ -238,7 +225,6 @@ export default function Collaborator() {
             resetSurvey()
         } else if (event == "survey" && surveyStep == 2) {
             setSurveyStep(1)
-            setCapturedImage("")
             setIsWebcamActive(false)
         }
     }
@@ -249,7 +235,6 @@ export default function Collaborator() {
     };
 
     const handleCapturePhoto = (imageSrc) => {
-        setCapturedImage(imageSrc);
         surveyForm.setImageData(imageSrc);
     };
 
@@ -259,7 +244,6 @@ export default function Collaborator() {
     };
 
     const handleRetakePhoto = () => {
-        setCapturedImage("");
         surveyForm.setImageData("");
     };
 
@@ -267,7 +251,6 @@ export default function Collaborator() {
         setIsWebcamActive(false);
         setSurveyStep(1);
         if (!surveyForm.capturedImage && !surveyForm.uploadedImage) {
-            setCapturedImage("");
             surveyForm.setImageData("");
         }
     };
@@ -291,7 +274,7 @@ export default function Collaborator() {
                 lat: markerLocation.lat,
                 lon: markerLocation.lng
             });
-            
+
             showMessage("Komoditas berhasil ditambahkan", <ChecklistIcon />);
         } catch (error) {
             showMessage(error.message || "Gagal menambahkan komoditas", <CancleIcon />);
@@ -331,73 +314,6 @@ export default function Collaborator() {
     }
 
 
-    const handleMenuSurvey = async () => {
-        showLoading("Mohon tunggu..");
-        try {
-            if (mapFunctions) {
-                await mapInteraction.fetchMarkers();
-            }
-            setEvent("view");
-        } catch (error) {
-            console.error('Error fetching markers:', error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const handleMenuSummary = async () => {
-        showLoading("Mohon tunggu..");
-        try {
-            const summaryData = await markerService.summary();
-            setSummary(summaryData.data);
-            if (mapFunctions) {
-                await mapInteraction.fetchSelfMarkers();
-            }
-            setEvent("summary");
-        } catch (error) {
-            console.error('Error fetching summary:', error);
-        } finally {
-            hideLoading();
-        }
-    };
-
-    const handleMenuAccount = async () => {
-        try {
-            showLoading("Mohon tunggu..");
-            // Use replace instead of push to prevent back navigation
-            await router.replace("/account");
-        } catch (error) {
-            console.error('Error navigating to account:', error);
-            showMessage("Gagal membuka halaman akun", <CancleIcon />);
-        } finally {
-            // Hide loading after a short delay to ensure smooth transition
-            setTimeout(() => {
-                hideLoading();
-            }, 500);
-        }
-    };
-
-    const handleNavigate = (view) => {
-        if (event === view) return; // Don't reload if already on the same view
-        
-        // Update URL with the new navigation state
-        const url = new URL(window.location.href);
-        url.searchParams.set('navigation', view);
-        window.history.pushState({}, '', url);s
-
-        switch (view) {
-            case 'view':
-                handleMenuSurvey();
-                break;
-            case 'summary':
-                handleMenuSummary();
-                break;
-            case 'account':
-                handleMenuAccount();
-                break;
-        }
-    };
-
     const onOpenHistory = () => {
         surveyForm.setIsHistoryOpen(true);
     };
@@ -415,58 +331,29 @@ export default function Collaborator() {
         if (typeof window != "undefined") {
             let navigation = new URLSearchParams(window.location.search);
             const navState = navigation.get("navigation");
-            
+
             switch (navState) {
                 case "summary":
-                fetchSelfMarker();
-                setEvent("summary");
-                    break;
-                case "view":
-                    fetchMarker();
-                    setEvent("view");
-                    break;
-                case "account":
-                    router.replace("/account");
+                    if (mapInteraction) {
+                        fetchSelfMarker();
+                    }
+                    setEvent("summary");
                     break;
                 default:
-                    // Default to view if no navigation state or invalid state
-                    fetchMarker();
-                setEvent("view");
-                    // Update URL to reflect default state
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('navigation', 'view');
-                    window.history.replaceState({}, '', url);
-                    break;
+                    if (mapInteraction) {
+                        fetchMarker();
+                    }
+                    setEvent("view");
             }
         }
     }, []);
 
-
-
     useEffect(() => {
         if (mapFunctions) {
-            fetchMarker()
+            fetchMarker();
         }
     }, [mapFunctions])
 
-
-    // Add cleanup effect
-    useEffect(() => {
-        return () => {
-            hideLoading();
-        };
-    }, [hideLoading]);
-
-    useEffect(() => {
-        // Cleanup function for image URLs
-        return () => {
-            if (uploadedImage && uploadedImage.startsWith('blob:')) {
-                URL.revokeObjectURL(uploadedImage);
-            }
-        };
-    }, [uploadedImage]);
-
-    // Effect to show/hide loading screen based on GPS state
     useEffect(() => {
         if (isGpsLoading) {
             showLoading("Mengambil lokasi GPS...");
@@ -474,6 +361,15 @@ export default function Collaborator() {
             hideLoading();
         }
     }, [isGpsLoading, showLoading, hideLoading]);
+
+
+    const searchParams = useSearchParams()
+    useEffect(() => {
+        const navigation = searchParams.get("navigation")
+        if (navigation) {
+            setEvent(navigation)
+        }
+    }, [searchParams])
 
     return (
         <main className="h-[100dvh] w-screen relative">
@@ -523,51 +419,76 @@ export default function Collaborator() {
             }
 
 
-            {
-                event != "survey" && (
-                    <div
-                        style={{
-                            position: 'fixed',
-                            bottom: 0,
-                            zIndex: 99999
-                        }}
-                    >
-                        {
-                            event == "view" && (
-                                <AnimatePresence>
-                                    <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 10 }}
-                                        transition={{ duration: 0.1, ease: "easeInOut" }}
+            <div
+                style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    zIndex: 999999
+                }}
+            >
+                {
+                    event == "view" && (
+                        <AnimatePresence>
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 10 }}
+                                transition={{ duration: 0.1, ease: "easeInOut" }}
+                            >
+                                <div className="glass-effect w-screen px-3 py-3">
+                                    <button
+                                        onClick={() => {
+                                            mapInteraction.updateGeolocation();
+                                            setEvent('survey');
+                                            setSurveyStep(0);
+                                        }}
+                                        className="cursor-pointer w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
                                     >
-                                        <div className="glass-effect w-screen px-3 py-3">
-                                            <button
-                                                onClick={() => {
-                                                    mapInteraction.updateGeolocation();
-                                                    setEvent('survey');
-                                                    setSurveyStep(0);
-                                                }}
-                                                className="w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
-                                            >
-                                                + Tambahkan Penanda
-                                            </button>
+                                        + Tambahkan Penanda
+                                    </button>
+                                </div>
+                            </motion.div>
+                        </AnimatePresence>
+
+
+                    )
+                }
+                {
+                    (event == "survey" && surveyStep == 0) && (
+                        <AnimatePresence>
+                            <motion.div
+                                initial={{ opacity: 0, y: 30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 30 }}
+                                transition={{ duration: 0.3, ease: "easeOut" }}
+                            >
+                                <div
+                                    className="bg-white w-screen fixed bottom-0"
+                                >
+                                    <div className="m-3">
+                                        <div className="bg-blue-100 flex p-3 items-center">
+                                            <div className="w-5 flex mr-2">
+                                                <InfoIcon />
+                                            </div>
+                                            <div className="flex-auto text-xs font-semibold">
+                                                Tekan dan tahan selama 2 detik pada area di dalam radius biru untuk menentukan lokasi komoditas.
+                                            </div>
                                         </div>
-                                    </motion.div>
-                                </AnimatePresence>
+                                    </div>
+                                </div>
 
+                            </motion.div>
+                        </AnimatePresence>
 
-                            )
-                        }
+                    )
+                }
 
-                        <NavigationBar 
-                            currentView={event}
-                            onNavigate={handleNavigate}
-                        />
-
-                    </div>
-                )
-            }
+                {
+                    event != "survey" && (
+                        <BottomNav />
+                    )
+                }
+            </div>
 
             {
                 event == "survey" && (
@@ -576,7 +497,7 @@ export default function Collaborator() {
                             position: 'absolute',
                             top: 10,
                             left: 0,
-                            zIndex: 99993
+                            zIndex: 99990
                         }}
                     >
                         <div className="bg-white ml-5 p-3 rounded-full text-blue shadow-lg"
@@ -588,32 +509,9 @@ export default function Collaborator() {
                 )
             }
 
-            {
-                (event == "survey" && surveyStep == 0) && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            zIndex: 9999
-                        }}
-                        className="bg-white w-screen"
-                    >
-                        <div className="m-3">
-                            <div className="bg-blue-100 flex p-3 items-center">
-                                <div className="w-5 flex mr-2">
-                                    <InfoIcon />
-                                </div>
-                                <div className="flex-auto text-xs font-semibold">
-                                    Silakan tekan area selama 2 detik di dalam lingkaran biru radius lokasi anda untuk menetapkan komoditas.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
 
-            <SurveyDrawer 
+
+            <SurveyDrawer
                 isOpen={surveyStep === 1}
                 mode={isEditOpen ? "edit" : "create"}
                 surveyForm={surveyForm}
@@ -622,7 +520,7 @@ export default function Collaborator() {
                 onFinish={isEditOpen ? handleFinishEdit : finishSurvey}
             />
 
-            <MarkerDetail 
+            <MarkerDetail
                 isOpen={isDetailOpen}
                 onClose={onCloseDetail}
                 onEdit={onEditDetail}
@@ -632,7 +530,7 @@ export default function Collaborator() {
                 isCurrentUser={markerDetail?.username === username}
             />
 
-            <PlantingHistoryForm 
+            <PlantingHistoryForm
                 isOpen={surveyForm.isHistoryOpen}
                 onClose={() => {
                     surveyForm.setIsHistoryOpen(false);

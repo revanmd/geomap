@@ -264,7 +264,7 @@ export default function useLeafletMap({
       // Use a small delay to ensure the map view change has completed
       setTimeout(() => {
         onComplete();
-      }, 300); // 300ms should be enough for the map animation
+      }, 200); // 300ms should be enough for the map animation
     }
   }, []);
 
@@ -404,7 +404,7 @@ export default function useLeafletMap({
     }).filter(Boolean); // Remove null entries
 
     setMarkerData(newMarkers);
-  }, [onClickMarker]);
+  }, []);
 
   const appendMarker = useCallback((commodity, id) => {
     if (!mapInstanceRef.current || !markerLayerRef.current) return;
@@ -434,7 +434,7 @@ export default function useLeafletMap({
 
     markerLayerRef.current.addLayer(newMarker);
     setMarkerData(prev => [...prev, { id, marker: newMarker }]);
-  }, [onClickMarker]);
+  }, []);
 
   const removeMarker = useCallback((id) => {
     if (!markerLayerRef.current) return;

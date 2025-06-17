@@ -19,20 +19,20 @@ export default function BottomNav() {
     }
 
     return (
-        <div className="fixed bottom-0 w-screen justify-around py-3 flex border bg-white">
-            <div className="flex flex-col items-center font-medium text-gray-500"
+        <div className="w-screen justify-around py-3 flex border bg-white">
+            <div className="flex flex-col items-center font-medium text-gray-500 cursor-pointer"
                 onClick={handleMenuSurvey}
             >
                 <Map size={22} />
                 <span className="text-xs mt-1">Jelajah</span>
             </div>
-            <div className="flex flex-col items-center font-medium text-gray-500"
+            <div className="flex flex-col items-center font-medium text-gray-500 cursor-pointer"
                 onClick={handleMenuSummary}
             >
                 <SquareMenu size={22} />
                 <span className="text-xs mt-1">Data Survey</span>
             </div>
-            <div className="flex flex-col items-center font-medium text-gray-500"
+            <div className="flex flex-col items-center font-medium text-gray-500 cursor-pointer"
                 onClick={handleMenuAccount}
             >
                 <CircleUserRound size={22} />

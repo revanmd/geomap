@@ -50,7 +50,7 @@ export default function MarkerDetail({
                     <div className="mt-4 px-4">
                         {uploadedImage && (
                             <div 
-                                className="relative w-full aspect-[4/3] overflow-hidden rounded cursor-pointer"
+                                className="relative w-full h-[200px] aspect-square rounded cursor-pointer"
                                 onClick={handleImageClick}
                             >
                                 <img 
