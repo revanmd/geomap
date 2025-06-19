@@ -76,7 +76,7 @@ function CollaboratorContent() {
     const callbackClickMarker = useCallback((params) => {
         fetchMarkerDetail(params.id);
         setEvent("view");
-    }, []);
+    }, [fetchMarkerDetail]);
 
 
     ////////////////////////////////////////////////////////////////
@@ -89,7 +89,7 @@ function CollaboratorContent() {
     const [uploadedImage, setUploadedImage] = useState("")
 
 
-    const fetchMarkerDetail = async (markerId) => {
+    const fetchMarkerDetail = useCallback(async (markerId) => {
         if (!markerId) {
             showMessage("ID marker tidak ditemukan", <CancleIcon />);
             return;
@@ -132,11 +132,25 @@ function CollaboratorContent() {
         } finally {
             hideLoading();
         }
-    };
+    }, [showLoading, hideLoading, showMessage, surveyForm]);
+
+    // Add cleanup effect for memory leak prevention
+    useEffect(() => {
+        return () => {
+            if (uploadedImage && uploadedImage.startsWith('blob:')) {
+                URL.revokeObjectURL(uploadedImage);
+            }
+        };
+    }, [uploadedImage]);
 
     const onCloseDetail = () => {
         setIsDetailOpen(false);
         surveyForm.resetForm();
+        // Clean up blob URL when closing detail
+        if (uploadedImage && uploadedImage.startsWith('blob:')) {
+            URL.revokeObjectURL(uploadedImage);
+        }
+        setUploadedImage("");
     };
 
     const onEditDetail = () => {
@@ -287,18 +301,18 @@ function CollaboratorContent() {
 
     ////////////////////////////////////////////////////////////////
     /// DATA
-    const fetchMarker = async () => {
+    const fetchMarker = useCallback(async () => {
         try {
             const markers = await markerService.getMarkers()
             if (markers.data && mapFunctions) {
                 mapFunctions.initializeMarkers(markers.data)
             }
         } catch (error) {
-            console.log(error)
+            console.error('Error fetching markers:', error)
         }
-    }
+    }, [mapFunctions]);
 
-    const fetchSelfMarker = async () => {
+    const fetchSelfMarker = useCallback(async () => {
         try {
             const summary = await markerService.summary()
             if (summary.data) {
@@ -310,9 +324,9 @@ function CollaboratorContent() {
                 mapFunctions.initializeMarkers(markers.data)
             }
         } catch (error) {
-            console.log(error)
+            console.error('Error fetching self markers:', error)
         }
-    }
+    }, [mapFunctions]);
 
 
     const onOpenHistory = () => {
@@ -347,13 +361,13 @@ function CollaboratorContent() {
                     setEvent("view");
             }
         }
-    }, []);
+    }, [fetchMarker, fetchSelfMarker, mapInteraction]);
 
     useEffect(() => {
         if (mapFunctions) {
             fetchMarker();
         }
-    }, [mapFunctions])
+    }, [mapFunctions, fetchMarker]);
 
     useEffect(() => {
         if (isGpsLoading) {
