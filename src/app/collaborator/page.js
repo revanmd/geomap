@@ -329,25 +329,22 @@ function CollaboratorContent() {
     };
 
     useEffect(() => {
-        if (typeof window != "undefined") {
-            let navigation = new URLSearchParams(window.location.search);
-            const navState = navigation.get("navigation");
+        const navState = searchParams.get("navigation");
 
-            switch (navState) {
-                case "summary":
-                    if (mapInteraction) {
-                        fetchSelfMarker();
-                    }
-                    setEvent("summary");
-                    break;
-                default:
-                    if (mapInteraction) {
-                        fetchMarker();
-                    }
-                    setEvent("view");
-            }
+        switch (navState) {
+            case "summary":
+                if (mapInteraction) {
+                    fetchSelfMarker();
+                }
+                setEvent("summary");
+                break;
+            default:
+                if (mapInteraction) {
+                    fetchMarker();
+                }
+                setEvent("view");
         }
-    }, []);
+    }, [searchParams]);
 
     useEffect(() => {
         if (mapFunctions) {
