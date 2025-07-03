@@ -46,7 +46,7 @@ export default function Home() {
 
     } catch (err) {
       console.error("Login error:", err);
-      message.error("Terdapat kesalahan pada server")
+      message.error("Gagal login, mohon periksa kembali username dan password anda")
       hideLoading()
     }
     // Note: Don't hide loading here if login was successful, 
