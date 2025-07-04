@@ -14,7 +14,6 @@ import { fileService } from "@/services/fileService";
 import { useGps } from "@/context/gpsContext";
 
 // Custom hooks
-import useMapInteraction from "@/hooks/useMapInteraction";
 import useSurveyForm from "@/hooks/useSurveyForm";
 
 import PlantingHistoryForm from "@/components/collaborator/PlantingHistoryForm";
@@ -38,8 +37,6 @@ function CollaboratorContent() {
     const { isGpsLoading } = useGps();
     const searchParams = useSearchParams()
 
-    // CUSTOM HOOKS
-    const mapInteraction = useMapInteraction()
     const surveyForm = useSurveyForm({
         userType,
         onSuccess: (data) => {
@@ -199,7 +196,7 @@ function CollaboratorContent() {
             await markerService.deleteMarker(markerDetail?.id);
             mapFunctions.removeMarker(markerDetail?.id)
             if (event == "summary") {
-                mapInteraction.fetchSelfMarkers()
+                fetchSelfMarker()
             }
 
             showMessage("Berhasil menghapus komoditas", <ChecklistIcon />, event)
@@ -284,6 +281,12 @@ function CollaboratorContent() {
         }
     }
 
+    const handleButtonSurvey = async () => {
+        await mapFunctions.onGeolocationUpdate();
+        setEvent('survey');
+        setSurveyStep(0);
+    }
+
 
     ////////////////////////////////////////////////////////////////
     /// DATA
@@ -333,13 +336,13 @@ function CollaboratorContent() {
 
         switch (navState) {
             case "summary":
-                if (mapInteraction) {
+                if (mapFunctions) {
                     fetchSelfMarker();
                 }
                 setEvent("summary");
                 break;
             default:
-                if (mapInteraction) {
+                if (mapFunctions) {
                     fetchMarker();
                 }
                 setEvent("view");
@@ -434,11 +437,7 @@ function CollaboratorContent() {
                             >
                                 <div className="glass-effect w-screen px-3 py-3">
                                     <button
-                                        onClick={() => {
-                                            mapInteraction.updateGeolocation();
-                                            setEvent('survey');
-                                            setSurveyStep(0);
-                                        }}
+                                        onClick={handleButtonSurvey}
                                         className="cursor-pointer w-full bg-blue text-white text-center font-semibold rounded py-2 px-2 shadow-lg text-sm"
                                     >
                                         + Tambahkan Penanda
