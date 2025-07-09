@@ -2,6 +2,9 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import L, { marker } from "leaflet";
 import "leaflet-rotate";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import "leaflet.markercluster";
 import { IsPointInRadius } from "../helper";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon } from "@/components/icon";
@@ -107,7 +110,37 @@ export default function useLeafletMap({
       rotateControl: false,
     });
     tileLayerRef.current = L.tileLayer(baseMapOptions[currentBaseMap]).addTo(instance.current);
-    markerLayerRef.current = L.layerGroup().addTo(instance.current);
+    
+    // Create marker cluster group with performance optimizations
+    markerLayerRef.current = L.markerClusterGroup({
+      chunkedLoading: true,
+      chunkProgress: (processed, totalMarkers) => {
+        // Optional: Add loading progress indicator
+        // console.log(`Loading markers: ${processed}/${totalMarkers}`);
+      },
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      maxClusterRadius: 50,
+      iconCreateFunction: function(cluster) {
+        const count = cluster.getChildCount();
+        let className = 'marker-cluster ';
+        
+        if (count < 10) {
+          className += 'marker-cluster-small';
+        } else if (count < 100) {
+          className += 'marker-cluster-medium';
+        } else {
+          className += 'marker-cluster-large';
+        }
+        
+        return L.divIcon({
+          html: `<div><span>${count}</span></div>`,
+          className: className,
+          iconSize: L.point(40, 40)
+        });
+      }
+    }).addTo(instance.current);
 
     if (onPressMap) {
       instance.current.on("contextmenu", async (event) => {
@@ -366,6 +399,8 @@ export default function useLeafletMap({
       return;
     }
 
+    // Create markers array for batch processing
+    const markersToAdd = [];
     const newMarkers = initialMarkers.map(({ id, location, commodity }) => {
       if (!id || !location?.lat || !location?.lon) {
         console.error("Invalid marker data:", { id, location, commodity });
@@ -397,11 +432,16 @@ export default function useLeafletMap({
         }
       });
 
-      // Add marker to layer
-      markerLayerRef.current.addLayer(marker);
+      // Add to batch array instead of adding directly
+      markersToAdd.push(marker);
 
       return { id, marker, lat, lon, commodity };
     }).filter(Boolean); // Remove null entries
+
+    // Add all markers at once for better performance
+    if (markersToAdd.length > 0) {
+      markerLayerRef.current.addLayers(markersToAdd);
+    }
 
     setMarkerData(newMarkers);
   }, []);
