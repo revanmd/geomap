@@ -5,6 +5,8 @@ import "./globals.css";
 import { LoadingProvider } from "@/context/loadingContext";
 import { UserProvider } from "@/context/userContext";
 import { GpsProvider } from "@/context/gpsContext";
+import MaintenanceModal from "@/components/MaintenanceModal";
+import PamfletModal from "@/components/PamfletModal";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -37,7 +39,8 @@ export default function RootLayout({ children }) {
             <MessageProvider>
               <GpsProvider>
                 <AntdRegistry>
-
+                  {/* <MaintenanceModal /> */}
+                  <PamfletModal />
                   {children}
 
                 </AntdRegistry>
