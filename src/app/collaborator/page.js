@@ -33,7 +33,7 @@ function CollaboratorContent() {
     // CONTEXT
     const { showMessage } = useMessage()
     const { showLoading, hideLoading } = useLoading();
-    const { username, userType } = useUser();
+    const { username, userType, isSurvey } = useUser();
     const { isGpsLoading } = useGps();
     const searchParams = useSearchParams()
 
@@ -427,7 +427,7 @@ function CollaboratorContent() {
                 }}
             >
                 {
-                    event == "view" && (
+                    event == "view" && isSurvey && (
                         <AnimatePresence>
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}

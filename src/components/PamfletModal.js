@@ -27,7 +27,7 @@ const PamfletModal = () => {
     >
       <div className="relative w-full h-[500px]">
         <Image
-          src="/pamflet-fix.jpg"
+          src="/pamflet-closed-fix.jpg"
           alt="Pamflet Informasi"
           fill
           style={{ objectFit: 'contain' }}

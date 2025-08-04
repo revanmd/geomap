@@ -91,7 +91,7 @@ export default function MarkerDetail({
                         </div>
                     )}
 
-                    {isCurrentUser && (
+                    {/* {isCurrentUser && (
                         <div className="fixed bottom-0 left-0 w-full bg-white p-5">
                             <div className="flex space-x-3 text-sm">
                                 <button
@@ -108,7 +108,7 @@ export default function MarkerDetail({
                                 </button>
                             </div>
                         </div>
-                    )}
+                    )} */}
                 </div>
             </Drawer>
 

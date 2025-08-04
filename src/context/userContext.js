@@ -119,7 +119,8 @@ export const UserProvider = ({ children }) => {
     // Additional utility properties for easier access
     username: user?.username || null,
     userType: user?.user_type || null,
-    userRegionCode: user?.user_region_code || null
+    userRegionCode: user?.user_region_code || null,
+    isSurvey: user?.is_survey || false
   };
 
   return (
