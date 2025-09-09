@@ -10,6 +10,7 @@ const UserContext = createContext();
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isSurvey, setIsSurvey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -27,6 +28,7 @@ export const UserProvider = ({ children }) => {
           console.log(userData) 
           setUser(userData.data?.user);
           setIsAuthenticated(true);
+          setIsSurvey(userData.data?.user.is_survey);
         } else {
           console.log(userData)
           clearUserState();
@@ -53,6 +55,7 @@ export const UserProvider = ({ children }) => {
   const setUserData = (userData) => {
     setUser(userData);
     setIsAuthenticated(!!userData);
+    setIsSurvey(userData?.is_survey);
     setError(null);
   };
 
@@ -105,6 +108,7 @@ export const UserProvider = ({ children }) => {
     // State
     user,
     isAuthenticated,
+    isSurvey,
     loading,
     error,
     
@@ -119,8 +123,7 @@ export const UserProvider = ({ children }) => {
     // Additional utility properties for easier access
     username: user?.username || null,
     userType: user?.user_type || null,
-    userRegionCode: user?.user_region_code || null,
-    isSurvey: user?.is_survey || false
+    userRegionCode: user?.user_region_code || null
   };
 
   return (

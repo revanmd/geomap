@@ -31,7 +31,6 @@ export default function Home() {
     try {
       const response = await authService.login(values.username, values.password);
       if (response?.data) {
-        // Use UserContext to set user data
         setUser(response.data)
 
         message.success("Berhasil login")

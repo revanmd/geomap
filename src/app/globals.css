@@ -256,3 +256,10 @@ svg path.leaflet-interactive {
   
   -webkit-tap-highlight-color: transparent; /* iOS Safari */
 }
+
+/* Prevent text selection */
+* {
+  -webkit-user-select: none !important; /* Safari */
+  -webkit-touch-callout: none none !important; /* Disable callout (copy/save menu) */
+  user-select: none none !important; /* Standard */
+}

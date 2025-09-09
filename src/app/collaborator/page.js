@@ -524,6 +524,7 @@ function CollaboratorContent() {
                 markerDetail={markerDetail}
                 uploadedImage={uploadedImage}
                 isCurrentUser={markerDetail?.username === username}
+                isSurvey={isSurvey}
             />
 
             <PlantingHistoryForm
