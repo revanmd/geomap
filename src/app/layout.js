@@ -40,7 +40,7 @@ export default function RootLayout({ children }) {
               <GpsProvider>
                 <AntdRegistry>
                   {/* <MaintenanceModal /> */}
-                  <PamfletModal />
+                  <PamfletModal></PamfletModal>
                   {children}
 
                 </AntdRegistry>

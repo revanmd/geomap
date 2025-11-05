@@ -66,7 +66,7 @@ export default function Map({
       setIsGpsPositioning(true);
       
       const newLocation = await getCurrentPosition();
-      setGpsLocation(newLocation, 200, 17, () => {
+      setGpsLocation(newLocation, 500, 17, () => {
         localStorage.setItem("gps_location", "allowed");
         setIsActiveGPS(true);
         setIsGpsPositioning(false);

@@ -147,18 +147,18 @@ export default function useLeafletMap({
         const { lat, lng } = event.latlng;
 
         if (GPSCenterRef.current && eventRef.current == "survey") {
-          if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 200)) {
+          if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 500)) {
             try {
               const radiusData = {
                 lat: lat,
                 lon: lng,
-                radius_km: 0.1
+                radius_km: 0.5
               };
               
               const response = await markerService.checkRadius(radiusData);
               if (response.data === true) {
                 showMessage(
-                  "Tidak diperbolehkan menambahkan titik karena berada pada radius titik lain",
+                  "Tidak diperbolehkan menambahkan titik karena berada pada radius 1km dengan titik lain",
                   <CancleIcon />
                 );
                 mapInstanceRef.current.setView(event.latlng);
@@ -261,7 +261,7 @@ export default function useLeafletMap({
   }, []);
 
 
-  const setGpsLocation = useCallback((center, radius = 200, zoom = 20, onComplete) => {
+  const setGpsLocation = useCallback((center, radius = 1000, zoom = 20, onComplete) => {
     if (!mapInstanceRef.current) {
       if (onComplete) onComplete();
       return;
