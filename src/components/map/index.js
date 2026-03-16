@@ -64,7 +64,7 @@ export default function Map({
     try {
       showLoading("Mohon tunggu ya, Kami sedang mencari lokasi Anda ..");
       setIsGpsPositioning(true);
-      
+
       const newLocation = await getCurrentPosition();
       setGpsLocation(newLocation, 500, 17, () => {
         localStorage.setItem("gps_location", "allowed");
@@ -308,7 +308,7 @@ export default function Map({
             }}
           >
             <img src="/base-road.png"
-              className={`icon-basemap ml-auto mr-auto 
+              className={`icon-basemap ml-auto mr-auto
                 ${currentBaseMap == "road" ? "border border-blue" : ""
                 }`}
             ></img>
@@ -323,7 +323,7 @@ export default function Map({
             }}
           >
             <img src="/base-sattelite.png"
-              className={`icon-basemap ml-auto mr-auto 
+              className={`icon-basemap ml-auto mr-auto
                 ${currentBaseMap == "hybrid" ? "border border-blue" : ""
                 }`}
             ></img>
@@ -338,7 +338,7 @@ export default function Map({
             }}
           >
             <img src="/base-terrain.png"
-              className={`icon-basemap ml-auto mr-auto 
+              className={`icon-basemap ml-auto mr-auto
                 ${currentBaseMap == "terrain" ? "border border-blue" : ""
                 }`}
             ></img>
@@ -359,7 +359,7 @@ export default function Map({
             }}
           >
             <img src="/model-null.png"
-              className={`icon-basemap ml-auto mr-auto 
+              className={`icon-basemap ml-auto mr-auto
                 ${currentDataMap == "none" ? "border border-blue" : ""
                 }`}
             ></img>
@@ -374,7 +374,7 @@ export default function Map({
             }}
           >
             <img src="/model-icon.png"
-              className={`icon-basemap ml-auto mr-auto 
+              className={`icon-basemap ml-auto mr-auto
                 ${currentDataMap == "dds" ? "border border-blue" : ""
                 }`}
             ></img>
@@ -390,12 +390,28 @@ export default function Map({
             }}
           >
             <img src="/model-icon.png"
-              className={`icon-basemap ml-auto mr-auto 
+              className={`icon-basemap ml-auto mr-auto
                 ${currentDataMap == "ifri" ? "border border-blue" : ""
                 }`}
             ></img>
             <div className="font-semibold text-xs mt-1.5">
               Model IFRI
+            </div>
+          </div>
+
+          <div style={{ width: '70px' }} className="rounded text-center mx-2 cursor-pointer"
+            onClick={() => {
+              setDataMap("satuan_tanah", transparencyLevel / 100)
+              setIsSelectMapOpen(false)
+            }}
+          >
+            <img src="/model-icon.png"
+              className={`icon-basemap ml-auto mr-auto
+                ${currentDataMap == "satuan_tanah" ? "border border-blue" : ""
+                }`}
+            ></img>
+            <div className="font-semibold text-xs mt-1.5">
+              Satuan Tanah
             </div>
           </div>
         </div>
@@ -521,4 +537,3 @@ export default function Map({
     </div>
   );
 }
-

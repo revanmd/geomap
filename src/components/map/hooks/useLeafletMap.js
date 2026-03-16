@@ -128,21 +128,26 @@ export default function useLeafletMap({
           "https://tile.digitalisasi-pi.com/data/satuan_tanah_jawa/{z}/{x}/{y}.pbf",
           {
             vectorTileLayerStyles: {
-              satuan_tanah: {
-                fill: true,
-                fillColor: "#ff7800",
-                fillOpacity: 0.1,
-                color: "#ff7800",
-                weight: 1,
-                opacity: 0.5,
-              },
+              satuan_tanah: function (properties) {
+                const color = getSatuanTnhColor(properties.Satuan_Tnh || "Unknown");
+                return {
+                  fill: true,
+                  fillColor: color,
+                  fillOpacity: 0.05, // Very transparent fill
+                  color: color,      // Border color based on soil type
+                  weight: 2,         // Border thickness
+                  opacity: 0.9,      // Border opacity
+                };
+              }
             },
+            maxZoom: 18,           // Display up to zoom 18
+            maxNativeZoom: 16,     // Native tiles available up to zoom 16
             interactive: true,
             getFeatureId: function (f) {
               return f.properties.fid;
             },
           }
-        ).addTo(mapInstanceRef.current);
+        );
 
         // Track mouse movement to cache Satuan_Tnh - MOST RELIABLE METHOD
         satuanTanhLayerRef.current.on("mouseover", function (e) {
@@ -438,13 +443,6 @@ export default function useLeafletMap({
     mapInstanceRef.current.setView(center, zoom);
     GPSCenterRef.current = center;
 
-    // Initialize satuan_tanah vector layer when GPS is set (async, non-blocking)
-    try {
-      await initSatuanTanhLayer();
-    } catch (error) {
-      console.error("Failed to init satuan_tanah layer:", error);
-    }
-
     // Wait for the map view animation to complete
     if (onComplete) {
       // Use a small delay to ensure the map view change has completed
@@ -491,6 +489,39 @@ export default function useLeafletMap({
     }
   }, []);
 
+  // Color palette for different Satuan_Tnh types
+  const getSatuanTnhColor = (satuanTnh) => {
+    // Hash the string to get consistent colors
+    let hash = 0;
+    for (let i = 0; i < satuanTnh.length; i++) {
+      hash = satuanTnh.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    // Predefined colors for common soil types
+    const colorMap = {
+      "Kambisol Eutrik": "#FF6B6B",
+      "Kambisol Litik": "#4ECDC4",
+      "Gleisol Hidrik": "#45B7D1",
+      "Latosol": "#96CEB4",
+      "Podsolik": "#FFEAA7",
+      "Regosol": "#DDA0DD",
+      "Andosol": "#98D8C8",
+      "Aluvial": "#F7DC6F",
+    };
+
+    if (colorMap[satuanTnh]) {
+      return colorMap[satuanTnh];
+    }
+
+    // Generate color from hash
+    const colors = [
+      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+      "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+      "#F8C471", "#82E0AA", "#F1948A", "#85C1E9", "#D7BDE2"
+    ];
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   const setDataMap = useCallback((newDataMap, opacity = 0.5) => {
     if (!mapInstanceRef.current) return;
 
@@ -504,6 +535,53 @@ export default function useLeafletMap({
         mapInstanceRef.current.removeLayer(dataLayerRef.current);
       }
       dataLayerRef.current = null;
+    }
+
+    // Handle satuan_tanah vector tile layer
+    if (newDataMap === "satuan_tanah") {
+      if (!satuanTanhLayerRef.current) {
+        // Initialize the layer if not already done
+        satuanTanhLayerRef.current = L.vectorGrid.protobuf(
+          "https://tile.digitalisasi-pi.com/data/satuan_tanah_jawa/{z}/{x}/{y}.pbf",
+          {
+            vectorTileLayerStyles: {
+              satuan_tanah: function (properties) {
+                const color = getSatuanTnhColor(properties.Satuan_Tnh || "Unknown");
+                return {
+                  fill: true,
+                  fillColor: color,
+                  fillOpacity: 0.05, // Very transparent fill
+                  color: color,
+                  weight: 2, // Border thickness
+                  opacity: 0.9, // Border opacity
+                };
+              }
+            },
+            maxZoom: 18,           // Display up to zoom 18
+            maxNativeZoom: 16,     // Native tiles available up to zoom 16
+            interactive: true,
+            getFeatureId: function (f) {
+              return f.properties.fid;
+            },
+          }
+        );
+
+        // Track mouse movement to cache Satuan_Tnh
+        satuanTanhLayerRef.current.on("mouseover", function (e) {
+          if (e.layer && e.layer.properties) {
+            currentSatuanTnhRef.current = e.layer.properties.Satuan_Tnh || null;
+          }
+        });
+
+        satuanTanhLayerRef.current.on("mouseout", function () {
+          currentSatuanTnhRef.current = null;
+        });
+      }
+
+      satuanTanhLayerRef.current.addTo(mapInstanceRef.current);
+      dataLayerRef.current = satuanTanhLayerRef.current;
+      setCurrentDataMap(newDataMap);
+      return;
     }
 
     // Add new data layer(s)
