@@ -9,7 +9,7 @@ import { IsPointInRadius } from "../helper";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
-import "leaflet-vectorgrid/dist/Leaflet.VectorGrid.bundled.js";
+import "leaflet.vectorgrid/dist/Leaflet.VectorGrid.bundled.js";
 
 export default function useLeafletMap({
   event,
