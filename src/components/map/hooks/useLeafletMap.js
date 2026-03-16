@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import L, { marker } from "leaflet";
+import L from "leaflet";
 import "leaflet-rotate";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -9,6 +9,7 @@ import { IsPointInRadius } from "../helper";
 import { useMessage } from "@/context/messageContext";
 import { CancleIcon } from "@/components/icon";
 import { markerService } from "@/services/markerService";
+import "leaflet-vectorgrid/dist/Leaflet.VectorGrid.bundled.js";
 
 export default function useLeafletMap({
   event,
@@ -18,14 +19,17 @@ export default function useLeafletMap({
   onClickMarker,
   onCancelMarker,
   onPressMap,
-  onReleaseMap,
+
 } = {}) {
   ////////////////////////////////
   // GLOBAL CONTEXT
   const { showMessage } = useMessage()
 
   const GPSCenterRef = useRef(null);
-
+  const satuanTanhLayerRef = useRef(null);
+  const currentSatuanTnhRef = useRef(null);
+  const isLayerReadyRef = useRef(false);
+  const isInitializingLayerRef = useRef(false);
 
   const eventRef = useRef(null)
   const mapContainerRef = useRef(null);
@@ -101,6 +105,127 @@ export default function useLeafletMap({
     }
   };
 
+  // Initialize vector tile layer for satuan_tanah - thread safe with Promise
+  const initSatuanTanhLayer = async () => {
+    if (!mapInstanceRef.current || satuanTanhLayerRef.current) {
+      return Promise.resolve();
+    }
+
+    // Prevent concurrent initialization
+    if (isInitializingLayerRef.current) {
+      // Wait for existing initialization to complete
+      while (isInitializingLayerRef.current) {
+        await new Promise(r => setTimeout(r, 50));
+      }
+      return Promise.resolve();
+    }
+
+    isInitializingLayerRef.current = true;
+
+    return new Promise((resolve) => {
+      try {
+        satuanTanhLayerRef.current = L.vectorGrid.protobuf(
+          "https://tile.digitalisasi-pi.com/data/satuan_tanah_jawa/{z}/{x}/{y}.pbf",
+          {
+            vectorTileLayerStyles: {
+              satuan_tanah: {
+                fill: true,
+                fillColor: "#ff7800",
+                fillOpacity: 0.1,
+                color: "#ff7800",
+                weight: 1,
+                opacity: 0.5,
+              },
+            },
+            interactive: true,
+            getFeatureId: function (f) {
+              return f.properties.fid;
+            },
+          }
+        ).addTo(mapInstanceRef.current);
+
+        // Track mouse movement to cache Satuan_Tnh - MOST RELIABLE METHOD
+        satuanTanhLayerRef.current.on("mouseover", function (e) {
+          if (e.layer && e.layer.properties) {
+            currentSatuanTnhRef.current = e.layer.properties.Satuan_Tnh || null;
+          }
+        });
+
+        satuanTanhLayerRef.current.on("mouseout", function () {
+          currentSatuanTnhRef.current = null;
+        });
+
+        // Mark layer as ready when loaded
+        satuanTanhLayerRef.current.on("load", function () {
+          isLayerReadyRef.current = true;
+          isInitializingLayerRef.current = false;
+          resolve();
+        });
+
+        // Fallback: resolve after 3 seconds even if load event doesn't fire
+        setTimeout(() => {
+          if (!isLayerReadyRef.current) {
+            isLayerReadyRef.current = true;
+            isInitializingLayerRef.current = false;
+            resolve();
+          }
+        }, 3000);
+      } catch (error) {
+        console.error("Error initializing satuan_tanah layer:", error);
+        isInitializingLayerRef.current = false;
+        resolve(); // Resolve anyway to not block
+      }
+    });
+  };
+
+  // Get Satuan_Tnh at a specific lat/lng with retry logic
+  const getSatuanTnhAtLocation = async (lat, lng, maxRetries = 3) => {
+    // Wait for layer to be ready
+    if (!isLayerReadyRef.current && satuanTanhLayerRef.current) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      // Method 1: Use cached value from mouseover (most reliable, no race condition)
+      if (currentSatuanTnhRef.current) {
+        return currentSatuanTnhRef.current;
+      }
+
+      // Method 2: Query the layer directly
+      if (satuanTanhLayerRef.current && isLayerReadyRef.current) {
+        let foundSatuanTnh = null;
+
+        try {
+          satuanTanhLayerRef.current.eachFeature(function (layer) {
+            if (foundSatuanTnh) return;
+
+            const properties = layer.properties || {};
+            if (properties.Satuan_Tnh) {
+              // Check if this feature contains the point using bounds
+              if (layer._bounds && layer._bounds.contains([lat, lng])) {
+                foundSatuanTnh = properties.Satuan_Tnh;
+              }
+            }
+          });
+        } catch (e) {
+          console.warn("Error querying features:", e);
+        }
+
+        if (foundSatuanTnh) {
+          return foundSatuanTnh;
+        }
+      }
+
+      // Wait before retry with exponential backoff
+      if (attempt < maxRetries - 1) {
+        const delay = Math.min(100 * Math.pow(2, attempt), 500);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+
+    return null;
+  };
+
   const _initialize = (container, instance) => {
     if (!container.current || instance.current) return;
     instance.current = L.map(container.current, {
@@ -110,7 +235,7 @@ export default function useLeafletMap({
       rotateControl: false,
     });
     tileLayerRef.current = L.tileLayer(baseMapOptions[currentBaseMap]).addTo(instance.current);
-    
+
     // Create marker cluster group with performance optimizations
     markerLayerRef.current = L.markerClusterGroup({
       chunkedLoading: true,
@@ -122,10 +247,10 @@ export default function useLeafletMap({
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 50,
-      iconCreateFunction: function(cluster) {
+      iconCreateFunction: function (cluster) {
         const count = cluster.getChildCount();
         let className = 'marker-cluster ';
-        
+
         if (count < 10) {
           className += 'marker-cluster-small';
         } else if (count < 100) {
@@ -133,7 +258,7 @@ export default function useLeafletMap({
         } else {
           className += 'marker-cluster-large';
         }
-        
+
         return L.divIcon({
           html: `<div><span>${count}</span></div>`,
           className: className,
@@ -147,18 +272,38 @@ export default function useLeafletMap({
         const { lat, lng } = event.latlng;
 
         if (GPSCenterRef.current && eventRef.current == "survey") {
-          if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 500)) {
+          if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 1500)) {
             try {
+              // Ensure layer is initialized before querying
+              if (!satuanTanhLayerRef.current) {
+                await initSatuanTanhLayer();
+              }
+
+              // Get Satuan_Tnh from vector tile layer at clicked location
+              const clickedSatuanTnh = await getSatuanTnhAtLocation(lat, lng);
+
+              // Warn if Satuan_Tnh not found
+              if (!clickedSatuanTnh) {
+                showMessage(
+                  "Tidak dapat mendeteksi satuan tanah di lokasi ini. Silakan pilih lokasi lain atau tunggu peta selesai dimuat.",
+                  <CancleIcon />
+                );
+                mapInstanceRef.current.setView(event.latlng);
+                return;
+              }
+
+              // Check radius with backend (3km diameter = 1.5km radius)
               const radiusData = {
                 lat: lat,
                 lon: lng,
-                radius_km: 0.5
+                radius_km: 1.5,
+                satuan_tnh: clickedSatuanTnh
               };
-              
+
               const response = await markerService.checkRadius(radiusData);
-              if (response.data === true) {
+              if (response.data?.exists === true) {
                 showMessage(
-                  "Tidak diperbolehkan menambahkan titik karena berada pada radius 1km dengan titik lain",
+                  response.data?.message || "Tidak diperbolehkan menambahkan titik karena sudah terdapat 3 marker dengan satuan tanah yang sama dalam radius 3km",
                   <CancleIcon />
                 );
                 mapInstanceRef.current.setView(event.latlng);
@@ -174,7 +319,8 @@ export default function useLeafletMap({
                   iconSize: [32, 38],
                 }),
               }).addTo(mapInstanceRef.current);
-              onPressMap({ lat, lng });
+              // Pass Satuan_Tnh to the parent component
+              onPressMap({ lat, lng, satuan_tnh: clickedSatuanTnh });
             } catch (error) {
               console.error("Error checking radius:", error);
               showMessage(
@@ -195,7 +341,7 @@ export default function useLeafletMap({
       });
     }
   };
- 
+
   const _destroy = (instance) => {
     if (instance.current) {
       instance.current.eachLayer((layer) => {
@@ -261,7 +407,7 @@ export default function useLeafletMap({
   }, []);
 
 
-  const setGpsLocation = useCallback((center, radius = 1000, zoom = 20, onComplete) => {
+  const setGpsLocation = useCallback(async (center, radius = 1500, zoom = 20, onComplete) => {
     if (!mapInstanceRef.current) {
       if (onComplete) onComplete();
       return;
@@ -291,6 +437,13 @@ export default function useLeafletMap({
     // Use setView with animation and wait for it to complete
     mapInstanceRef.current.setView(center, zoom);
     GPSCenterRef.current = center;
+
+    // Initialize satuan_tanah vector layer when GPS is set (async, non-blocking)
+    try {
+      await initSatuanTanhLayer();
+    } catch (error) {
+      console.error("Failed to init satuan_tanah layer:", error);
+    }
 
     // Wait for the map view animation to complete
     if (onComplete) {
@@ -364,10 +517,10 @@ export default function useLeafletMap({
             maxNativeZoom: 15,
             bounds: L.latLngBounds(layerConfig.bounds)
           });
-          
+
           // Add the layer to the map
           layer.addTo(mapInstanceRef.current);
-          
+
           return layer;
         });
       } else if (newDataMap !== "none") {
@@ -424,7 +577,7 @@ export default function useLeafletMap({
       }
 
       const marker = L.marker([lat, lon], { icon: L.icon(iconOptions) });
-      
+
       // Add click handler
       marker.on("click", () => {
         if (onClickMarker) {
