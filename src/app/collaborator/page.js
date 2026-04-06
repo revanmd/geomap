@@ -286,15 +286,17 @@ function CollaboratorContent() {
       const radiusCheck = await markerService.checkRadius({
         lat: markerLocation.lat,
         lon: markerLocation.lng,
-        radius_km: 1.55,
+        radius_km: 3.01,
         commodity: surveyForm.surveyCommodity,
         satuan_tnh: surveyForm.satuanTnh,
       });
       if (radiusCheck.data?.exists === true) {
-        throw new Error(
+        showMessage(
           radiusCheck.data?.message ||
-          "Tidak diperbolehkan menambahkan titik karena sudah terdapat marker dengan komoditas yang sama dalam radius 1.55km",
+          "Tidak diperbolehkan menambahkan titik karena sudah terdapat marker dengan komoditas dan satuan tanah yang sama dalam radius 3km",
+          <CancleIcon />,
         );
+        return;
       }
 
       await surveyForm.submitForm(

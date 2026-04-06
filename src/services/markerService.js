@@ -101,4 +101,16 @@ export const markerService = {
       throw error.response?.data || { message: "Failed to check radius" };
     }
   },
+
+  getMarkersByBounds: async ({ min_lat, max_lat, min_lon, max_lon }) => {
+    try {
+      const response = await api.get(`/api/markers/_bounds`, {
+        params: { min_lat, max_lat, min_lon, max_lon },
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Get markers by bounds error:", error);
+      throw error.response?.data || { message: "Failed to fetch markers by bounds" };
+    }
+  },
 };

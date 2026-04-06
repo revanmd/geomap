@@ -42,6 +42,8 @@ export default function useLeafletMap({
 
   const tileLayerRef = useRef(null);
   const dataLayerRef = useRef(null);
+  const initializeMarkersRef = useRef(null);
+  const boundsDebounceRef = useRef(null);
 
   const [markerData, setMarkerData] = useState([]); // State to track all markers
 
@@ -533,6 +535,34 @@ export default function useLeafletMap({
       });
     }
 
+    // Load markers within screen bounds when zoom >= 15
+    instance.current.on('zoomend moveend', async () => {
+      const currentZoom = instance.current.getZoom();
+      clearTimeout(boundsDebounceRef.current);
+      if (currentZoom >= 15) {
+        boundsDebounceRef.current = setTimeout(async () => {
+          try {
+            const bounds = instance.current.getBounds();
+            const result = await markerService.getMarkersByBounds({
+              min_lat: bounds.getSouth(),
+              max_lat: bounds.getNorth(),
+              min_lon: bounds.getWest(),
+              max_lon: bounds.getEast(),
+            });
+            if (result?.data && initializeMarkersRef.current) {
+              initializeMarkersRef.current(result.data);
+            }
+          } catch (err) {
+            console.error('[Bounds] Error fetching markers by bounds:', err);
+          }
+        }, 300);
+      } else {
+        if (markerLayerRef.current) {
+          markerLayerRef.current.clearLayers();
+        }
+      }
+    });
+
     // Pre-initialize the satuan_tanah layer so tiles are loaded and the layer is
     // interactive before the user's first survey right-click.
     initSatuanTanhLayer();
@@ -938,6 +968,12 @@ export default function useLeafletMap({
 
     setMarkerData(newMarkers);
   }, []);
+
+  // Keep initializeMarkersRef pointing at the latest version of initializeMarkers
+  // so the zoomend/moveend handler inside _initialize can call it via ref
+  useEffect(() => {
+    initializeMarkersRef.current = initializeMarkers;
+  }, [initializeMarkers]);
 
   const appendMarker = useCallback((commodity, id) => {
     if (!mapInstanceRef.current || !markerLayerRef.current) return;
