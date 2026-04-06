@@ -1,14 +1,14 @@
-import { useEffect, useRef, useCallback, useState } from "react";
 import L from "leaflet";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "leaflet-rotate";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
-import { IsPointInRadius } from "../helper";
-import { useMessage } from "@/context/messageContext";
 import { CancleIcon } from "@/components/icon";
+import { useMessage } from "@/context/messageContext";
 import { markerService } from "@/services/markerService";
+import { IsPointInRadius } from "../helper";
 import "leaflet.vectorgrid/dist/Leaflet.VectorGrid.bundled.js";
 
 export default function useLeafletMap({
@@ -19,25 +19,25 @@ export default function useLeafletMap({
   onClickMarker,
   onCancelMarker,
   onPressMap,
-
 } = {}) {
   ////////////////////////////////
   // GLOBAL CONTEXT
-  const { showMessage } = useMessage()
+  const { showMessage } = useMessage();
 
   const GPSCenterRef = useRef(null);
+  const gpsRadiusRef = useRef(1500);
   const satuanTanhLayerRef = useRef(null);
   const currentSatuanTnhRef = useRef(null);
   const isLayerReadyRef = useRef(false);
   const isInitializingLayerRef = useRef(false);
 
-  const eventRef = useRef(null)
+  const eventRef = useRef(null);
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const layersRef = useRef([]);
   const markerLayerRef = useRef(null);
   const gpsMarkerRef = useRef(null);
-  const markerAddRef = useRef(null)
+  const markerAddRef = useRef(null);
   const gpsCircleRef = useRef(null);
 
   const tileLayerRef = useRef(null);
@@ -59,55 +59,94 @@ export default function useLeafletMap({
     dds: [
       {
         url: "https://tile.digitalisasi-pi.com/data/jatim_ds/{z}/{x}/{y}.png",
-        bounds: [[-8.7806, 110.8890], [-6.7157, 114.7012]], // East Java bounds
-        name: "Jawa Timur"
+        bounds: [
+          [-8.7806, 110.889],
+          [-6.7157, 114.7012],
+        ], // East Java bounds
+        name: "Jawa Timur",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_jateng/{z}/{x}/{y}.png",
-        bounds: [[-8.3017, 108.6571], [-5.7224, 111.7024]], // Central Java bounds
-        name: "Jawa Tengah"
+        bounds: [
+          [-8.3017, 108.6571],
+          [-5.7224, 111.7024],
+        ], // Central Java bounds
+        name: "Jawa Tengah",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_lampung1/{z}/{x}/{y}.png",
-        bounds: [[-6.1474, 103.6351], [-3.7294, 106.0283]], // Lampung bounds
-        name: "Lampung"
+        bounds: [
+          [-6.1474, 103.6351],
+          [-3.7294, 106.0283],
+        ], // Lampung bounds
+        name: "Lampung",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_ntb7/{z}/{x}/{y}.png",
-        bounds: [[-9.6668, 115.7472], [-8.0757, 119.3413]], // NTB bounds
-        name: "Nusa Tenggara Barat"
+        bounds: [
+          [-9.6668, 115.7472],
+          [-8.0757, 119.3413],
+        ], // NTB bounds
+        name: "Nusa Tenggara Barat",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_sumsel1/{z}/{x}/{y}.png",
-        bounds: [[-4.9209, 101.8713], [-1.6263, 106.2158]], // South Sumatra bounds
-        name: "Sumatera Selatan"
+        bounds: [
+          [-4.9209, 101.8713],
+          [-1.6263, 106.2158],
+        ], // South Sumatra bounds
+        name: "Sumatera Selatan",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_sulsel1/{z}/{x}/{y}.png",
-        bounds: [[-7.0184, 115.8217], [-0.8676, 120.9817]], // South Sulawesi bounds
-        name: "Sulawesi Selatan"
+        bounds: [
+          [-7.0184, 115.8217],
+          [-0.8676, 120.9817],
+        ], // South Sulawesi bounds
+        name: "Sulawesi Selatan",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_jatim/{z}/{x}/{y}.png",
-        bounds: [[-8.7806, 110.8890], [-6.7157, 114.7012]], // East Java bounds
-        name: "Jawa Timur"
+        bounds: [
+          [-8.7806, 110.889],
+          [-6.7157, 114.7012],
+        ], // East Java bounds
+        name: "Jawa Timur",
       },
       {
         url: "https://tile.digitalisasi-pi.com/data/merged_all_zoom_jabar/{z}/{x}/{y}.png",
-        bounds: [[-7.8178, 106.3714], [-5.9023, 108.8403]], // West Java bounds
-        name: "Jawa Barat"
-      }
+        bounds: [
+          [-7.8178, 106.3714],
+          [-5.9023, 108.8403],
+        ], // West Java bounds
+        name: "Jawa Barat",
+      },
     ],
     ifri: {
       url: "https://tile.digitalisasi-pi.com/data/jatim_ifri/{z}/{x}/{y}.png",
-      bounds: [[-8.7806, 110.8890], [-6.7157, 114.7012]], // East Java bounds
-      name: "IFRI Jawa Timur"
-    }
+      bounds: [
+        [-8.7806, 110.889],
+        [-6.7157, 114.7012],
+      ], // East Java bounds
+      name: "IFRI Jawa Timur",
+    },
   };
 
   // Initialize vector tile layer for satuan_tanah - thread safe with Promise
   const initSatuanTanhLayer = async () => {
     if (!mapInstanceRef.current || satuanTanhLayerRef.current) {
+      // If the layer exists but was removed from the map, re-add it
+      if (
+        satuanTanhLayerRef.current &&
+        mapInstanceRef.current &&
+        !mapInstanceRef.current.hasLayer(satuanTanhLayerRef.current)
+      ) {
+        console.debug(
+          "[SatuanTnh:initLayer] layer exists but not on map — re-adding",
+        );
+        satuanTanhLayerRef.current.addTo(mapInstanceRef.current);
+        isLayerReadyRef.current = true;
+      }
       return Promise.resolve();
     }
 
@@ -115,7 +154,7 @@ export default function useLeafletMap({
     if (isInitializingLayerRef.current) {
       // Wait for existing initialization to complete
       while (isInitializingLayerRef.current) {
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 50));
       }
       return Promise.resolve();
     }
@@ -128,40 +167,74 @@ export default function useLeafletMap({
           "https://tile.digitalisasi-pi.com/data/satuan_tanah_jawa/{z}/{x}/{y}.pbf",
           {
             vectorTileLayerStyles: {
-              satuan_tanah: function (properties) {
-                const color = getSatuanTnhColor(properties.Satuan_Tnh || "Unknown");
+              satuan_tanah: (properties) => {
+                const color = getSatuanTnhColor(
+                  properties.Satuan_Tnh || "Unknown",
+                );
                 return {
                   fill: true,
                   fillColor: color,
-                  fillOpacity: 0.05, // Very transparent fill
-                  color: color,      // Border color based on soil type
-                  weight: 2,         // Border thickness
-                  opacity: 0.9,      // Border opacity
+                  fillOpacity: 0.4,
+                  color: color, // Border color based on soil type
+                  weight: 2, // Border thickness
+                  opacity: 0.9, // Border opacity
                 };
-              }
+              },
             },
-            maxZoom: 18,           // Display up to zoom 18
-            maxNativeZoom: 16,     // Native tiles available up to zoom 16
+            maxZoom: 18, // Display up to zoom 18
+            maxNativeZoom: 16, // Native tiles available up to zoom 16
             interactive: true,
-            getFeatureId: function (f) {
-              return f.properties.fid;
-            },
-          }
+            getFeatureId: (f) => f.properties.fid,
+          },
         );
 
         // Track mouse movement to cache Satuan_Tnh - MOST RELIABLE METHOD
-        satuanTanhLayerRef.current.on("mouseover", function (e) {
+        satuanTanhLayerRef.current.on("mouseover", (e) => {
           if (e.layer && e.layer.properties) {
             currentSatuanTnhRef.current = e.layer.properties.Satuan_Tnh || null;
+            console.debug(
+              "[SatuanTnh:initLayer] mouseover → set:",
+              currentSatuanTnhRef.current,
+            );
           }
         });
 
-        satuanTanhLayerRef.current.on("mouseout", function () {
+        satuanTanhLayerRef.current.on("mouseout", () => {
+          console.debug(
+            "[SatuanTnh:initLayer] mouseout → clearing cached value (was:",
+            currentSatuanTnhRef.current,
+            ")",
+          );
           currentSatuanTnhRef.current = null;
         });
 
+        // Capture Satuan_Tnh on right-click directly from the feature.
+        // Layer contextmenu fires BEFORE the map contextmenu, so the value
+        // will always be set by the time the map handler reads it.
+        satuanTanhLayerRef.current.on("contextmenu", (e) => {
+          if (e.layer && e.layer.properties) {
+            currentSatuanTnhRef.current = e.layer.properties.Satuan_Tnh || null;
+            console.debug(
+              "[SatuanTnh:initLayer] contextmenu on feature → set:",
+              currentSatuanTnhRef.current,
+            );
+          } else {
+            console.debug(
+              "[SatuanTnh:initLayer] contextmenu fired but no layer/properties on event:",
+              e,
+            );
+          }
+        });
+
+        // Add to the map so tiles load and interactive events (contextmenu, mouseover) fire
+        satuanTanhLayerRef.current.addTo(mapInstanceRef.current);
+        console.debug("[SatuanTnh:initLayer] layer added to map");
+
         // Mark layer as ready when loaded
-        satuanTanhLayerRef.current.on("load", function () {
+        satuanTanhLayerRef.current.on("load", () => {
+          console.debug(
+            "[SatuanTnh:initLayer] load event fired → isLayerReady = true",
+          );
           isLayerReadyRef.current = true;
           isInitializingLayerRef.current = false;
           resolve();
@@ -185,49 +258,145 @@ export default function useLeafletMap({
 
   // Get Satuan_Tnh at a specific lat/lng with retry logic
   const getSatuanTnhAtLocation = async (lat, lng, maxRetries = 3) => {
+    console.debug(
+      "[SatuanTnh:getAt] called for",
+      { lat, lng },
+      "| layerExists:",
+      !!satuanTanhLayerRef.current,
+      "| isLayerReady:",
+      isLayerReadyRef.current,
+      "| cachedValue:",
+      currentSatuanTnhRef.current,
+    );
+
     // Wait for layer to be ready
     if (!isLayerReadyRef.current && satuanTanhLayerRef.current) {
-      await new Promise(r => setTimeout(r, 500));
+      console.debug(
+        "[SatuanTnh:getAt] layer exists but not ready — waiting 500ms",
+      );
+      await new Promise((r) => setTimeout(r, 500));
     }
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      // Method 1: Use cached value from mouseover (most reliable, no race condition)
+      console.debug(
+        `[SatuanTnh:getAt] attempt ${attempt + 1}/${maxRetries} | cached:`,
+        currentSatuanTnhRef.current,
+      );
+
+      // Method 1: Use cached value from mouseover/contextmenu (most reliable)
       if (currentSatuanTnhRef.current) {
+        console.debug(
+          "[SatuanTnh:getAt] Method 1 HIT →",
+          currentSatuanTnhRef.current,
+        );
         return currentSatuanTnhRef.current;
       }
+      console.debug("[SatuanTnh:getAt] Method 1 MISS (cached is null)");
 
-      // Method 2: Query the layer directly
+      // Method 2: Walk the VectorGrid's internal _vectorTiles structure.
+      // For each loaded tile that contains the click point, check each feature's
+      // pixel-space bounding box (_pxBounds) against the tile-relative click position.
       if (satuanTanhLayerRef.current && isLayerReadyRef.current) {
         let foundSatuanTnh = null;
+        let tilesChecked = 0;
+        let featuresChecked = 0;
+        let featuresWithBounds = 0;
 
         try {
-          satuanTanhLayerRef.current.eachFeature(function (layer) {
-            if (foundSatuanTnh) return;
+          const map = mapInstanceRef.current;
+          const vectorTiles = satuanTanhLayerRef.current._vectorTiles;
 
-            const properties = layer.properties || {};
-            if (properties.Satuan_Tnh) {
-              // Check if this feature contains the point using bounds
-              if (layer._bounds && layer._bounds.contains([lat, lng])) {
-                foundSatuanTnh = properties.Satuan_Tnh;
+          if (vectorTiles) {
+            for (const tileKey of Object.keys(vectorTiles)) {
+              if (foundSatuanTnh) break;
+
+              const tile = vectorTiles[tileKey];
+              if (!tile || !tile._features) continue;
+
+              // Parse "x:y:z" key
+              const [tx, ty, tz] = tileKey.split(":").map(Number);
+
+              // Calculate tile bounds in lat/lng using Leaflet's projection
+              const tileSize = 256;
+              const nw = map.unproject(
+                L.point(tx * tileSize, ty * tileSize),
+                tz,
+              );
+              const se = map.unproject(
+                L.point((tx + 1) * tileSize, (ty + 1) * tileSize),
+                tz,
+              );
+              const tileBounds = L.latLngBounds(nw, se);
+
+              if (!tileBounds.contains(L.latLng(lat, lng))) continue;
+              tilesChecked++;
+
+              // Convert click lat/lng to pixel coords relative to this tile's NW corner
+              const clickPx = map.project(L.latLng(lat, lng), tz);
+              const relPx = L.point(
+                clickPx.x - tx * tileSize,
+                clickPx.y - ty * tileSize,
+              );
+
+              for (const id of Object.keys(tile._features)) {
+                featuresChecked++;
+                const data = tile._features[id];
+                if (!data || !data.feature) continue;
+                const feature = data.feature;
+                if (!feature.properties?.Satuan_Tnh) continue;
+
+                if (feature._pxBounds) {
+                  featuresWithBounds++;
+                  if (feature._pxBounds.contains(relPx)) {
+                    foundSatuanTnh = feature.properties.Satuan_Tnh;
+                    console.debug(
+                      "[SatuanTnh:getAt] Method 2 pxBounds match →",
+                      foundSatuanTnh,
+                      "| tileKey:",
+                      tileKey,
+                      "| relPx:",
+                      relPx,
+                    );
+                    break;
+                  }
+                }
               }
             }
-          });
+          } else {
+            console.debug(
+              "[SatuanTnh:getAt] Method 2: _vectorTiles is empty/null — tiles not loaded yet",
+            );
+          }
         } catch (e) {
-          console.warn("Error querying features:", e);
+          console.warn("[SatuanTnh:getAt] Method 2 _vectorTiles error:", e);
         }
+
+        console.debug(
+          `[SatuanTnh:getAt] Method 2 checked ${tilesChecked} matching tiles, ${featuresChecked} features, ${featuresWithBounds} had pxBounds → found:`,
+          foundSatuanTnh,
+        );
 
         if (foundSatuanTnh) {
           return foundSatuanTnh;
         }
+      } else {
+        console.debug(
+          "[SatuanTnh:getAt] Method 2 SKIPPED | layerExists:",
+          !!satuanTanhLayerRef.current,
+          "| isLayerReady:",
+          isLayerReadyRef.current,
+        );
       }
 
       // Wait before retry with exponential backoff
       if (attempt < maxRetries - 1) {
-        const delay = Math.min(100 * Math.pow(2, attempt), 500);
-        await new Promise(r => setTimeout(r, delay));
+        const delay = Math.min(100 * 2 ** attempt, 500);
+        console.debug(`[SatuanTnh:getAt] retrying in ${delay}ms…`);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
 
+    console.debug("[SatuanTnh:getAt] all attempts exhausted — returning null");
     return null;
   };
 
@@ -239,7 +408,9 @@ export default function useLeafletMap({
       zoomControl: false,
       rotateControl: false,
     });
-    tileLayerRef.current = L.tileLayer(baseMapOptions[currentBaseMap]).addTo(instance.current);
+    tileLayerRef.current = L.tileLayer(baseMapOptions[currentBaseMap]).addTo(
+      instance.current,
+    );
 
     // Create marker cluster group with performance optimizations
     markerLayerRef.current = L.markerClusterGroup({
@@ -252,64 +423,80 @@ export default function useLeafletMap({
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       maxClusterRadius: 50,
-      iconCreateFunction: function (cluster) {
+      iconCreateFunction: (cluster) => {
         const count = cluster.getChildCount();
-        let className = 'marker-cluster ';
+        let className = "marker-cluster ";
 
         if (count < 10) {
-          className += 'marker-cluster-small';
+          className += "marker-cluster-small";
         } else if (count < 100) {
-          className += 'marker-cluster-medium';
+          className += "marker-cluster-medium";
         } else {
-          className += 'marker-cluster-large';
+          className += "marker-cluster-large";
         }
 
         return L.divIcon({
           html: `<div><span>${count}</span></div>`,
           className: className,
-          iconSize: L.point(40, 40)
+          iconSize: L.point(40, 40),
         });
-      }
+      },
     }).addTo(instance.current);
 
     if (onPressMap) {
       instance.current.on("contextmenu", async (event) => {
         const { lat, lng } = event.latlng;
 
+        console.debug(
+          "[SatuanTnh:contextmenu] fired",
+          { lat, lng },
+          "| GPSCenter:",
+          GPSCenterRef.current,
+          "| event:",
+          eventRef.current,
+          "| layerExists:",
+          !!satuanTanhLayerRef.current,
+          "| isLayerReady:",
+          isLayerReadyRef.current,
+          "| cachedSatuanTnh:",
+          currentSatuanTnhRef.current,
+        );
+
         if (GPSCenterRef.current && eventRef.current == "survey") {
-          if (IsPointInRadius(lat, lng, GPSCenterRef.current.lat, GPSCenterRef.current.lng, 1500)) {
+          if (
+            IsPointInRadius(
+              lat,
+              lng,
+              GPSCenterRef.current.lat,
+              GPSCenterRef.current.lng,
+              gpsRadiusRef.current,
+            )
+          ) {
             try {
               // Ensure layer is initialized before querying
               if (!satuanTanhLayerRef.current) {
+                console.debug(
+                  "[SatuanTnh:contextmenu] layer not yet created — calling initSatuanTanhLayer",
+                );
                 await initSatuanTanhLayer();
+                console.debug(
+                  "[SatuanTnh:contextmenu] initSatuanTanhLayer done | isLayerReady:",
+                  isLayerReadyRef.current,
+                );
               }
 
               // Get Satuan_Tnh from vector tile layer at clicked location
               const clickedSatuanTnh = await getSatuanTnhAtLocation(lat, lng);
+              console.debug(
+                "[SatuanTnh:contextmenu] getSatuanTnhAtLocation result:",
+                clickedSatuanTnh,
+              );
 
               // Warn if Satuan_Tnh not found
               if (!clickedSatuanTnh) {
                 showMessage(
                   "Tidak dapat mendeteksi satuan tanah di lokasi ini. Silakan pilih lokasi lain atau tunggu peta selesai dimuat.",
-                  <CancleIcon />
-                );
-                mapInstanceRef.current.setView(event.latlng);
-                return;
-              }
-
-              // Check radius with backend (3km diameter = 1.5km radius)
-              const radiusData = {
-                lat: lat,
-                lon: lng,
-                radius_km: 1.5,
-                satuan_tnh: clickedSatuanTnh
-              };
-
-              const response = await markerService.checkRadius(radiusData);
-              if (response.data?.exists === true) {
-                showMessage(
-                  response.data?.message || "Tidak diperbolehkan menambahkan titik karena sudah terdapat 3 marker dengan satuan tanah yang sama dalam radius 3km",
-                  <CancleIcon />
+                  <CancleIcon />,
                 );
                 mapInstanceRef.current.setView(event.latlng);
                 return;
@@ -330,14 +517,14 @@ export default function useLeafletMap({
               console.error("Error checking radius:", error);
               showMessage(
                 "Terjadi kesalahan saat memeriksa radius",
-                <CancleIcon />
+                <CancleIcon />,
               );
             }
           } else {
             showMessage(
               "Titik yang dipilih berada di luar radius area Anda. Silakan pilih titik di dalam area atau dekati lokasi komoditas",
-              <CancleIcon />
-            )
+              <CancleIcon />,
+            );
             mapInstanceRef.current.setView(event.latlng);
           }
         } else {
@@ -345,6 +532,10 @@ export default function useLeafletMap({
         }
       });
     }
+
+    // Pre-initialize the satuan_tanah layer so tiles are loaded and the layer is
+    // interactive before the user's first survey right-click.
+    initSatuanTanhLayer();
   };
 
   const _destroy = (instance) => {
@@ -362,13 +553,13 @@ export default function useLeafletMap({
 
   // handle change events
   useEffect(() => {
-    eventRef.current = event
+    eventRef.current = event;
     if (event == "view") {
       if (markerAddRef.current && markerAddRef.current._leaflet_id) {
         mapInstanceRef.current.removeLayer(markerAddRef.current);
       }
     }
-  }, [event])
+  }, [event]);
 
   useEffect(() => {
     if (mapContainerRef.current && !mapInstanceRef.current) {
@@ -384,7 +575,9 @@ export default function useLeafletMap({
   useEffect(() => {
     if (mapInstanceRef.current && tileLayerRef.current) {
       mapInstanceRef.current.removeLayer(tileLayerRef.current);
-      tileLayerRef.current = L.tileLayer(baseMapOptions[currentBaseMap]).addTo(mapInstanceRef.current);
+      tileLayerRef.current = L.tileLayer(baseMapOptions[currentBaseMap]).addTo(
+        mapInstanceRef.current,
+      );
     }
   }, [currentBaseMap]);
 
@@ -396,14 +589,18 @@ export default function useLeafletMap({
 
   const addLayer = useCallback((layerUrl, options = {}) => {
     if (mapInstanceRef.current) {
-      const newLayer = L.tileLayer(layerUrl, options).addTo(mapInstanceRef.current);
+      const newLayer = L.tileLayer(layerUrl, options).addTo(
+        mapInstanceRef.current,
+      );
       layersRef.current.push(newLayer);
     }
   }, []);
 
   const removeLayer = useCallback((layerUrl) => {
     if (mapInstanceRef.current) {
-      const layerIndex = layersRef.current.findIndex(layer => layer._url === layerUrl);
+      const layerIndex = layersRef.current.findIndex(
+        (layer) => layer._url === layerUrl,
+      );
       if (layerIndex !== -1) {
         mapInstanceRef.current.removeLayer(layersRef.current[layerIndex]);
         layersRef.current.splice(layerIndex, 1);
@@ -411,50 +608,52 @@ export default function useLeafletMap({
     }
   }, []);
 
+  const setGpsLocation = useCallback(
+    async (center, radius = 1500, zoom = 20, onComplete) => {
+      if (!mapInstanceRef.current) {
+        if (onComplete) onComplete();
+        return;
+      }
 
-  const setGpsLocation = useCallback(async (center, radius = 1500, zoom = 20, onComplete) => {
-    if (!mapInstanceRef.current) {
-      if (onComplete) onComplete();
-      return;
-    }
+      if (gpsMarkerRef.current && gpsMarkerRef.current._leaflet_id) {
+        mapInstanceRef.current.removeLayer(gpsMarkerRef.current);
+      }
+      if (gpsCircleRef.current && gpsCircleRef.current._leaflet_id) {
+        mapInstanceRef.current.removeLayer(gpsCircleRef.current);
+      }
 
-    if (gpsMarkerRef.current && gpsMarkerRef.current._leaflet_id) {
-      mapInstanceRef.current.removeLayer(gpsMarkerRef.current);
-    }
-    if (gpsCircleRef.current && gpsCircleRef.current._leaflet_id) {
-      mapInstanceRef.current.removeLayer(gpsCircleRef.current);
-    }
+      gpsMarkerRef.current = L.marker(center, {
+        icon: L.icon({
+          iconUrl: "/pin.png",
+          iconSize: [20, 20],
+        }),
+      }).addTo(mapInstanceRef.current);
 
-    gpsMarkerRef.current = L.marker(center, {
-      icon: L.icon({
-        iconUrl: "/pin.png",
-        iconSize: [20, 20],
-      }),
-    }).addTo(mapInstanceRef.current);
+      gpsCircleRef.current = L.circle(center, {
+        radius: radius,
+        fillColor: "#0080FB",
+        fillOpacity: 0.2,
+        weight: 0,
+      }).addTo(mapInstanceRef.current);
 
-    gpsCircleRef.current = L.circle(center, {
-      radius: radius,
-      fillColor: "#0080FB",
-      fillOpacity: 0.2,
-      weight: 0,
-    }).addTo(mapInstanceRef.current);
+      // Use setView with animation and wait for it to complete
+      mapInstanceRef.current.setView(center, zoom);
+      GPSCenterRef.current = center;
+      gpsRadiusRef.current = radius;
 
-    // Use setView with animation and wait for it to complete
-    mapInstanceRef.current.setView(center, zoom);
-    GPSCenterRef.current = center;
-
-    // Wait for the map view animation to complete
-    if (onComplete) {
-      // Use a small delay to ensure the map view change has completed
-      setTimeout(() => {
-        onComplete();
-      }, 200); // 300ms should be enough for the map animation
-    }
-  }, []);
-
+      // Wait for the map view animation to complete
+      if (onComplete) {
+        // Use a small delay to ensure the map view change has completed
+        setTimeout(() => {
+          onComplete();
+        }, 200); // 300ms should be enough for the map animation
+      }
+    },
+    [],
+  );
 
   const getGpsLocation = useCallback(() => {
-    return GPSCenterRef.current
+    return GPSCenterRef.current;
   }, []);
 
   const getMarkerAddLocation = useCallback(() => {
@@ -462,7 +661,7 @@ export default function useLeafletMap({
       const latLng = markerAddRef.current.getLatLng();
       return {
         lat: latLng.lat,
-        lng: latLng.lng
+        lng: latLng.lng,
       };
     }
     return null;
@@ -478,7 +677,9 @@ export default function useLeafletMap({
 
     // Add new base map layer
     if (baseMapOptions[newBaseMap]) {
-      tileLayerRef.current = L.tileLayer(baseMapOptions[newBaseMap]).addTo(mapInstanceRef.current);
+      tileLayerRef.current = L.tileLayer(baseMapOptions[newBaseMap]).addTo(
+        mapInstanceRef.current,
+      );
     }
 
     setCurrentBaseMap(newBaseMap);
@@ -502,11 +703,11 @@ export default function useLeafletMap({
       "Kambisol Eutrik": "#FF6B6B",
       "Kambisol Litik": "#4ECDC4",
       "Gleisol Hidrik": "#45B7D1",
-      "Latosol": "#96CEB4",
-      "Podsolik": "#FFEAA7",
-      "Regosol": "#DDA0DD",
-      "Andosol": "#98D8C8",
-      "Aluvial": "#F7DC6F",
+      Latosol: "#96CEB4",
+      Podsolik: "#FFEAA7",
+      Regosol: "#DDA0DD",
+      Andosol: "#98D8C8",
+      Aluvial: "#F7DC6F",
     };
 
     if (colorMap[satuanTnh]) {
@@ -515,9 +716,21 @@ export default function useLeafletMap({
 
     // Generate color from hash
     const colors = [
-      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
-      "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
-      "#F8C471", "#82E0AA", "#F1948A", "#85C1E9", "#D7BDE2"
+      "#FF6B6B",
+      "#4ECDC4",
+      "#45B7D1",
+      "#96CEB4",
+      "#FFEAA7",
+      "#DDA0DD",
+      "#98D8C8",
+      "#F7DC6F",
+      "#BB8FCE",
+      "#85C1E9",
+      "#F8C471",
+      "#82E0AA",
+      "#F1948A",
+      "#85C1E9",
+      "#D7BDE2",
     ];
     return colors[Math.abs(hash) % colors.length];
   };
@@ -528,13 +741,27 @@ export default function useLeafletMap({
     // Remove existing data layers
     if (dataLayerRef.current) {
       if (Array.isArray(dataLayerRef.current)) {
-        dataLayerRef.current.forEach(layer => {
+        dataLayerRef.current.forEach((layer) => {
           if (layer) mapInstanceRef.current.removeLayer(layer);
         });
       } else if (dataLayerRef.current) {
         mapInstanceRef.current.removeLayer(dataLayerRef.current);
       }
       dataLayerRef.current = null;
+
+      // If we just removed the satuan_tanah layer and we're switching to a
+      // different data map, keep it on the map as a hidden background layer
+      // so the survey contextmenu can still query features from it.
+      if (
+        newDataMap !== "satuan_tanah" &&
+        satuanTanhLayerRef.current &&
+        !mapInstanceRef.current.hasLayer(satuanTanhLayerRef.current)
+      ) {
+        console.debug(
+          "[SatuanTnh:setDataMap] re-adding satuanTanh as background query layer after data map switch",
+        );
+        satuanTanhLayerRef.current.addTo(mapInstanceRef.current);
+      }
     }
 
     // Handle satuan_tanah vector tile layer
@@ -545,40 +772,74 @@ export default function useLeafletMap({
           "https://tile.digitalisasi-pi.com/data/satuan_tanah_jawa/{z}/{x}/{y}.pbf",
           {
             vectorTileLayerStyles: {
-              satuan_tanah: function (properties) {
-                const color = getSatuanTnhColor(properties.Satuan_Tnh || "Unknown");
+              satuan_tanah: (properties) => {
+                const color = getSatuanTnhColor(
+                  properties.Satuan_Tnh || "Unknown",
+                );
                 return {
                   fill: true,
                   fillColor: color,
-                  fillOpacity: 0.05, // Very transparent fill
+                  fillOpacity: 0.4,
                   color: color,
                   weight: 2, // Border thickness
                   opacity: 0.9, // Border opacity
                 };
-              }
+              },
             },
-            maxZoom: 18,           // Display up to zoom 18
-            maxNativeZoom: 16,     // Native tiles available up to zoom 16
+            maxZoom: 18, // Display up to zoom 18
+            maxNativeZoom: 16, // Native tiles available up to zoom 16
             interactive: true,
-            getFeatureId: function (f) {
-              return f.properties.fid;
-            },
-          }
+            getFeatureId: (f) => f.properties.fid,
+          },
         );
 
         // Track mouse movement to cache Satuan_Tnh
-        satuanTanhLayerRef.current.on("mouseover", function (e) {
+        satuanTanhLayerRef.current.on("mouseover", (e) => {
           if (e.layer && e.layer.properties) {
             currentSatuanTnhRef.current = e.layer.properties.Satuan_Tnh || null;
+            console.debug(
+              "[SatuanTnh:setDataMap] mouseover → set:",
+              currentSatuanTnhRef.current,
+            );
           }
         });
 
-        satuanTanhLayerRef.current.on("mouseout", function () {
+        satuanTanhLayerRef.current.on("mouseout", () => {
+          console.debug(
+            "[SatuanTnh:setDataMap] mouseout → clearing cached value (was:",
+            currentSatuanTnhRef.current,
+            ")",
+          );
           currentSatuanTnhRef.current = null;
+        });
+
+        // Capture Satuan_Tnh on right-click directly from the feature.
+        // Layer contextmenu fires BEFORE the map contextmenu, so the value
+        // will always be set by the time the map handler reads it.
+        satuanTanhLayerRef.current.on("contextmenu", (e) => {
+          if (e.layer && e.layer.properties) {
+            currentSatuanTnhRef.current = e.layer.properties.Satuan_Tnh || null;
+            console.debug(
+              "[SatuanTnh:setDataMap] contextmenu on feature → set:",
+              currentSatuanTnhRef.current,
+            );
+          } else {
+            console.debug(
+              "[SatuanTnh:setDataMap] contextmenu fired but no layer/properties on event:",
+              e,
+            );
+          }
         });
       }
 
       satuanTanhLayerRef.current.addTo(mapInstanceRef.current);
+      // Mark the layer as ready so getSatuanTnhAtLocation's Method 2 can run.
+      // setDataMap is the main initializer; initSatuanTanhLayer's load-event
+      // handler never fires here, so we set the flag explicitly.
+      isLayerReadyRef.current = true;
+      console.debug(
+        "[SatuanTnh:setDataMap] layer added to map → isLayerReady = true",
+      );
       dataLayerRef.current = satuanTanhLayerRef.current;
       setCurrentDataMap(newDataMap);
       return;
@@ -588,12 +849,12 @@ export default function useLeafletMap({
     if (dataMapOptions[newDataMap]) {
       if (Array.isArray(dataMapOptions[newDataMap])) {
         // Handle multiple layers for DDS
-        dataLayerRef.current = dataMapOptions[newDataMap].map(layerConfig => {
+        dataLayerRef.current = dataMapOptions[newDataMap].map((layerConfig) => {
           const layer = L.tileLayer(layerConfig.url, {
             opacity,
             maxZoom: 18,
             maxNativeZoom: 15,
-            bounds: L.latLngBounds(layerConfig.bounds)
+            bounds: L.latLngBounds(layerConfig.bounds),
           });
 
           // Add the layer to the map
@@ -608,14 +869,13 @@ export default function useLeafletMap({
           opacity,
           maxZoom: 18,
           maxNativeZoom: 15,
-          bounds: L.latLngBounds(layerConfig.bounds)
+          bounds: L.latLngBounds(layerConfig.bounds),
         }).addTo(mapInstanceRef.current);
       }
     }
 
     setCurrentDataMap(newDataMap);
   }, []);
-
 
   // Function to initialize markers from an external data source
   const initializeMarkers = useCallback((initialMarkers) => {
@@ -632,42 +892,44 @@ export default function useLeafletMap({
 
     // Create markers array for batch processing
     const markersToAdd = [];
-    const newMarkers = initialMarkers.map(({ id, location, commodity }) => {
-      if (!id || !location?.lat || !location?.lon) {
-        console.error("Invalid marker data:", { id, location, commodity });
-        return null;
-      }
-
-      const { lat, lon } = location;
-      let iconOptions;
-      switch (commodity) {
-        case "padi":
-          iconOptions = { iconUrl: "/marker-padi.png", iconSize: [32, 38] };
-          break;
-        case "jagung":
-          iconOptions = { iconUrl: "/marker-jagung.png", iconSize: [32, 38] };
-          break;
-        case "tebu":
-          iconOptions = { iconUrl: "/marker-tebu.png", iconSize: [32, 38] };
-          break;
-        default:
-          iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
-      }
-
-      const marker = L.marker([lat, lon], { icon: L.icon(iconOptions) });
-
-      // Add click handler
-      marker.on("click", () => {
-        if (onClickMarker) {
-          onClickMarker({ id });
+    const newMarkers = initialMarkers
+      .map(({ id, location, commodity }) => {
+        if (!id || !location?.lat || !location?.lon) {
+          console.error("Invalid marker data:", { id, location, commodity });
+          return null;
         }
-      });
 
-      // Add to batch array instead of adding directly
-      markersToAdd.push(marker);
+        const { lat, lon } = location;
+        let iconOptions;
+        switch (commodity) {
+          case "padi":
+            iconOptions = { iconUrl: "/marker-padi.png", iconSize: [32, 38] };
+            break;
+          case "jagung":
+            iconOptions = { iconUrl: "/marker-jagung.png", iconSize: [32, 38] };
+            break;
+          case "tebu":
+            iconOptions = { iconUrl: "/marker-tebu.png", iconSize: [32, 38] };
+            break;
+          default:
+            iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
+        }
 
-      return { id, marker, lat, lon, commodity };
-    }).filter(Boolean); // Remove null entries
+        const marker = L.marker([lat, lon], { icon: L.icon(iconOptions) });
+
+        // Add click handler
+        marker.on("click", () => {
+          if (onClickMarker) {
+            onClickMarker({ id });
+          }
+        });
+
+        // Add to batch array instead of adding directly
+        markersToAdd.push(marker);
+
+        return { id, marker, lat, lon, commodity };
+      })
+      .filter(Boolean); // Remove null entries
 
     // Add all markers at once for better performance
     if (markersToAdd.length > 0) {
@@ -697,14 +959,14 @@ export default function useLeafletMap({
       }),
     });
 
-    newMarker.on('click', () => {
+    newMarker.on("click", () => {
       if (onClickMarker) {
         onClickMarker({ id });
       }
     });
 
     markerLayerRef.current.addLayer(newMarker);
-    setMarkerData(prev => [...prev, { id, marker: newMarker }]);
+    setMarkerData((prev) => [...prev, { id, marker: newMarker }]);
   }, []);
 
   const removeMarker = useCallback((id) => {
@@ -734,16 +996,27 @@ export default function useLeafletMap({
               iconOptions = { iconUrl: "/marker-padi.png", iconSize: [32, 38] };
               break;
             case "jagung":
-              iconOptions = { iconUrl: "/marker-jagung.png", iconSize: [32, 38] };
+              iconOptions = {
+                iconUrl: "/marker-jagung.png",
+                iconSize: [32, 38],
+              };
               break;
             case "tebu":
               iconOptions = { iconUrl: "/marker-tebu.png", iconSize: [32, 38] };
               break;
             default:
-              iconOptions = { iconUrl: "/marker-other.png", iconSize: [32, 38] };
+              iconOptions = {
+                iconUrl: "/marker-other.png",
+                iconSize: [32, 38],
+              };
           }
           markerObj.marker.setIcon(L.icon(iconOptions));
-          return { ...markerObj, lat: newLocation.lat, lon: newLocation.lng, type: newType };
+          return {
+            ...markerObj,
+            lat: newLocation.lat,
+            lon: newLocation.lng,
+            type: newType,
+          };
         }
         return markerObj;
       });
@@ -751,7 +1024,11 @@ export default function useLeafletMap({
   }, []);
 
   const removeMarkerAdd = useCallback(() => {
-    if (mapInstanceRef.current && markerAddRef.current && markerAddRef.current._leaflet_id) {
+    if (
+      mapInstanceRef.current &&
+      markerAddRef.current &&
+      markerAddRef.current._leaflet_id
+    ) {
       mapInstanceRef.current.removeLayer(markerAddRef.current);
     }
   }, []);
